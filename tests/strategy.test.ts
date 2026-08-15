@@ -9,6 +9,7 @@ import {
   operatorCannotAnswer,
   overlayTrackRecord,
   publishedHealthFactor,
+  sanitizeOperatorRaw,
   strategyFacts,
   termixCardUrl,
 } from "../src/lib/strategy";
@@ -148,6 +149,31 @@ describe("Venus empty account is unknown, not 999 / SAFE", () => {
     );
     expect(agent.trackRecord.notes).not.toMatch(/999/);
     expect(agent.trackRecord.notes).not.toMatch(/Operator HF/);
+  });
+
+  it("does not emit 999 or SAFE in the desk JSON for an empty account", () => {
+    const raw = sanitizeOperatorRaw(
+      "health-factor",
+      { ...emptyStatus, effective_risk: "SAFE", bnb_minus_5: 999.0 },
+      perfExtra,
+    );
+    const blob = JSON.stringify(raw);
+    expect(blob).not.toMatch(/999/);
+    expect(blob).not.toMatch(/SAFE/);
+    expect(raw.status.health_factor).toBe("unknown");
+    expect(raw.status.risk).toBe("unknown");
+    expect(raw.strategy.health_factor).toBe("unknown");
+    expect(raw.strategy.risk).toBe("unknown");
+  });
+
+  it("keeps a real HF in the desk JSON", () => {
+    const raw = sanitizeOperatorRaw(
+      "health-factor",
+      { health_factor: 1.35, collateral: 10, debt: 4, risk: "SAFE", protocol: "Venus" },
+      {},
+    );
+    expect(raw.status.health_factor).toBe(1.35);
+    expect(raw.status.risk).toBe("SAFE");
   });
 });
 

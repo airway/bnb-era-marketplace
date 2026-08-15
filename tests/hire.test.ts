@@ -10,7 +10,7 @@ import { COMMERCE, EVALUATOR_ROUTER, OPTIMISTIC_POLICY } from "../src/lib/contra
 import { defaultHirePrice } from "../src/lib/classify";
 import { isCloneNoise } from "../src/lib/dedup";
 import { money } from "../src/lib/format";
-import { FEATURED_BY_DESK, OPERATOR_BY_TOKEN } from "../src/lib/featured";
+import { canShowHire, FEATURED_BY_DESK, HIDDEN_FROM_HOME, OPERATOR_BY_TOKEN, visibleOnHome } from "../src/lib/featured";
 import { coverageDesk } from "../src/lib/fallback";
 import { confirmHire, fundHire, rememberHire } from "../src/lib/hire";
 import { normalizePaymentRail } from "../src/lib/rails";
@@ -128,6 +128,16 @@ describe("coverage desks stay real", () => {
     expect(OPERATOR_BY_TOKEN["265876"]).toBeUndefined();
     expect(Object.keys(OPERATOR_BY_TOKEN)).toEqual(expect.arrayContaining(["265375", "266933"]));
     expect(Object.keys(OPERATOR_BY_TOKEN)).not.toContain("265876");
+  });
+
+  it("keeps #265876 off the home grid and without a Hire button", () => {
+    expect(HIDDEN_FROM_HOME.has("265876")).toBe(true);
+    expect(visibleOnHome({ tokenId: "265876" })).toBe(false);
+    expect(canShowHire({ tokenId: "265876" })).toBe(false);
+    expect(visibleOnHome({ tokenId: "266232" })).toBe(true);
+    expect(canShowHire({ tokenId: "265375" })).toBe(true);
+    expect(coverageDesk("yield").some((a) => a.tokenId === "265876")).toBe(false);
+    expect(coverageDesk("yield").length).toBeGreaterThanOrEqual(4);
   });
 });
 

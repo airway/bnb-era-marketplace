@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DESKS } from "@/lib/categories";
+import { visibleOnHome } from "@/lib/featured";
 import { listAllDesks } from "@/lib/query";
 import { HireableCard } from "@/components/HireableCard";
 
@@ -99,9 +100,12 @@ export default async function HomePage() {
               </div>
               {result.warning && <div className="banner">{result.warning}</div>}
               <div className="grid">
-                {result.agents.slice(0, 4).map((agent) => (
-                  <HireableCard key={agent.id} agent={agent} />
-                ))}
+                {result.agents
+                  .filter(visibleOnHome)
+                  .slice(0, 4)
+                  .map((agent) => (
+                    <HireableCard key={agent.id} agent={agent} />
+                  ))}
               </div>
             </div>
           </section>

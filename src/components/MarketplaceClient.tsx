@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AgentCard } from "./AgentCard";
 import { HireDialog } from "./HireDialog";
 import { DESKS } from "@/lib/categories";
+import { canShowHire } from "@/lib/featured";
 import { getCompareIds, rememberAgents, toggleCompare } from "@/lib/client-store";
 import type { AgentListResult, CategoryId, HireRecord, MarketplaceAgent } from "@/lib/types";
 
@@ -160,7 +161,7 @@ export function MarketplaceClient({
             agent={agent}
             compared={compare.includes(agent.id)}
             onCompare={(a) => setCompare(toggleCompare(a.id))}
-            onHire={setHiring}
+            onHire={canShowHire(agent) ? setHiring : undefined}
           />
         ))}
       </div>

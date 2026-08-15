@@ -3,7 +3,7 @@ import { readIdentityOnchain, resolveRegistration } from "./chain";
 import { looksLikeSpamName, readinessOf } from "./classify";
 import { isCloneNoise, preferLive as sortByLiveSignal } from "./dedup";
 import { coverageAgents, coverageDesk, findCoverageAgent, SNAPSHOT_CAPTURED_AT } from "./fallback";
-import { FEATURED_BY_DESK } from "./featured";
+import { FEATURED_BY_DESK, HIDDEN_FROM_HOME, visibleOnHome } from "./featured";
 import { tryLiveAgent, tryLiveAgents, tryLiveDesk } from "./scan";
 import { resolveAgentPlaceholder } from "./endpoints";
 import { discoverA2A, discoverBase, overlayTrackRecord, probeStrategy, termixCardUrl } from "./strategy";
@@ -132,7 +132,7 @@ export async function listMarketplaceAgents(q: ListQuery): Promise<AgentListResu
     const rank = (a: MarketplaceAgent) => {
       const i = featuredOrder.indexOf(a.tokenId);
       if (i >= 0) return i;
-      if (a.strategy?.error?.includes("502")) return 120;
+      if (HIDDEN_FROM_HOME.has(a.tokenId) || a.strategy?.error?.includes("502")) return 200;
       if (a.a2aUrl) return 50;
       return 100;
     };
@@ -163,7 +163,7 @@ export async function listMarketplaceAgents(q: ListQuery): Promise<AgentListResu
     const rank = (a: MarketplaceAgent) => {
       const i = featuredOrder.indexOf(a.tokenId);
       if (i >= 0) return i;
-      if (a.strategy?.error?.includes("502")) return 120;
+      if (HIDDEN_FROM_HOME.has(a.tokenId) || a.strategy?.error?.includes("502")) return 200;
       if (a.a2aUrl) return 50;
       return 100;
     };
@@ -252,10 +252,18 @@ export async function getMarketplaceAgent(
 
 export async function listAllDesks(): Promise<Record<Exclude<CategoryId, "other">, AgentListResult>> {
   const entries = await Promise.all(
-    DESKS.map(async (d) => [
-      d.id,
-      await listMarketplaceAgents({ category: d.id, limit: 8, sort: "fit", preferLive: true }),
-    ] as const),
+    DESKS.map(async (d) => {
+      const result = await listMarketplaceAgents({ category: d.id, limit: 8, sort: "fit", preferLive: true });
+      const agents = result.agents.filter(visibleOnHome);
+      return [
+        d.id,
+        {
+          ...result,
+          agents,
+          total: agents.length,
+        },
+      ] as const;
+    }),
   );
   return Object.fromEntries(entries) as Record<Exclude<CategoryId, "other">, AgentListResult>;
 }

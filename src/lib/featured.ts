@@ -32,6 +32,18 @@ export const FEATURED_BY_DESK: Record<Exclude<CategoryId, "other">, string[]> = 
 /** Agent Studio /launch listings — real token IDs, no A2A, not featured. */
 export const STUDIO_STUBS = new Set(["267697", "267698"]);
 
+/** Operator cannot answer (HTTP 502). Keep the identity on the desk index if
+ *  8004scan returns it, but never on the home grid and never with a Hire button. */
+export const HIDDEN_FROM_HOME = new Set(["265876"]);
+
 export function operatorFor(tokenId: string) {
   return OPERATOR_BY_TOKEN[tokenId];
+}
+
+export function visibleOnHome(agent: { tokenId: string }): boolean {
+  return !HIDDEN_FROM_HOME.has(agent.tokenId);
+}
+
+export function canShowHire(agent: { tokenId: string }): boolean {
+  return !HIDDEN_FROM_HOME.has(agent.tokenId);
 }

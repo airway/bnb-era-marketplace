@@ -78,6 +78,43 @@ export function publishedHealthFactor(status: Record<string, unknown>, extra: Re
   return raw;
 }
 
+const EMPTY_RISK_KEYS = new Set(["risk", "effective_risk", "account_risk"]);
+
+function redactEmptyVenusValue(key: string, value: unknown): unknown {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return redactEmptyVenusRecord(value as Record<string, unknown>);
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => (item && typeof item === "object" ? redactEmptyVenusValue(key, item) : item));
+  }
+  if (key === "health_factor" || isHealthFactorSentinel(value)) return "unknown";
+  if (EMPTY_RISK_KEYS.has(key) && String(value).toUpperCase() === "SAFE") return "unknown";
+  return value;
+}
+
+function redactEmptyVenusRecord(obj: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    out[key] = redactEmptyVenusValue(key, value);
+  }
+  return out;
+}
+
+/** Drop Venus empty-account sentinels from JSON so the desk payload matches the UI. */
+export function sanitizeOperatorRaw(
+  category: CategoryId,
+  status: Record<string, unknown>,
+  extra: Record<string, unknown>,
+): { status: Record<string, unknown>; strategy: Record<string, unknown> } {
+  if (category !== "health-factor" || !isVenusEmptyAccount(status, extra)) {
+    return { status, strategy: extra };
+  }
+  return {
+    status: redactEmptyVenusRecord(status),
+    strategy: redactEmptyVenusRecord(extra),
+  };
+}
+
 function discoverBase(agent: MarketplaceAgent): string | null {
   const known = operatorFor(agent.tokenId);
   if (known?.base) return known.base;
@@ -227,7 +264,7 @@ function snapshotFromOperator(
     probedAt,
     sourceUrl,
     facts,
-    raw: { status, strategy: extra },
+    raw: sanitizeOperatorRaw(category, status, extra),
   };
 }
 
