@@ -1,4 +1,5 @@
 import { IDENTITY_REGISTRY } from "./contracts";
+import { FETCH_CACHE } from "./fetch-cache";
 
 const RPCS = [
   process.env.BSC_RPC_URL,
@@ -22,7 +23,7 @@ async function ethCall(to: string, data: string): Promise<string> {
           params: [{ to, data }, "latest"],
         }),
         signal: ctrl.signal,
-        cache: "no-store",
+        cache: FETCH_CACHE,
       });
       clearTimeout(t);
       const body = (await res.json()) as { result?: string; error?: { message?: string } };
@@ -96,7 +97,7 @@ export async function resolveRegistration(uri: string | null): Promise<Record<st
     if (!url.startsWith("http")) return null;
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 6000);
-    const res = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
+    const res = await fetch(url, { signal: ctrl.signal, cache: FETCH_CACHE });
     clearTimeout(t);
     if (!res.ok) return null;
     return (await res.json()) as Record<string, unknown>;

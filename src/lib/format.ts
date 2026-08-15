@@ -5,7 +5,7 @@ export function shortAddr(addr?: string | null): string {
 }
 
 export function money(n: number): string {
-  return `${n.toFixed(3)} tBNB`;
+  return `${n.toFixed(3)} quoted`;
 }
 
 export function scoreLabel(n: number): string {

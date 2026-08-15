@@ -5,7 +5,7 @@ export function Footer() {
     <footer className="footer">
       <div className="wrap footer-inner">
         <div>
-          ERA Marketplace — BNB Chain Build the Era. Browse ERC-8004, hire on a mock rail.
+          ERA Marketplace — BNB Chain Build the Era. Browse ERC-8004, hire via ERC-8183.
         </div>
         <div>
           <Link href="/about">Data honesty</Link>

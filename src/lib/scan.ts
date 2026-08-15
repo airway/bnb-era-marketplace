@@ -1,5 +1,6 @@
 import { DESKS } from "./categories";
 import { DEFAULT_CHAIN_ID, SCAN_API_BASE } from "./contracts";
+import { FETCH_CACHE } from "./fetch-cache";
 import { normalizeScanAgent, type ScanAgentRaw } from "./normalize";
 import type { AgentListResult, CategoryId, MarketplaceAgent } from "./types";
 
@@ -30,7 +31,7 @@ async function scanFetch(path: string): Promise<Response> {
     return await fetch(`${SCAN_API_BASE}${path}`, {
       headers,
       signal: ctrl.signal,
-      cache: "no-store",
+      cache: FETCH_CACHE,
     });
   } finally {
     clearTimeout(t);

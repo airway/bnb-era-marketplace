@@ -53,8 +53,18 @@ export default function AboutPage() {
 
         <h2>Hire</h2>
         <p>
-          Activate is a product flow: mandate fields + mock x402 or mock escrow. Intended rails are
-          Binance x402 / ERC-8183. This build does not send mainnet or testnet payments.
+          Activate calls the agent&apos;s live A2A <code>negotiate</code> skill (measured on the LP
+          rebalancer and lending guardian). You then sign{" "}
+          <code>createJob</code> on the official AgenticCommerce kernel{" "}
+          <code>0xEa4DAa3100A767e86FDed867729ae7446476EBA6</code> (BNB Smart Chain), fund in U
+          (<code>0xcE24439F2D9C6a2289F741120FE202248B666666</code>), and we POST{" "}
+          <code>notify_funded</code>. Operator <code>/activate</code> exists on some agents but
+          requires an operator API key — we do not ship secrets, so that path is not used.
+        </p>
+        <p>
+          Strategy numbers come from operator <code>/status</code>, <code>/strategy</code>, and{" "}
+          <code>/performance</code> when those URLs respond. If the feed is 502 or a field is null,
+          the UI says so. We do not invent win rates.
         </p>
 
         <h2>Not in the product</h2>

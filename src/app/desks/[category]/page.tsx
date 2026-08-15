@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { DESKS, MANDATES } from "@/lib/categories";
 import { listMarketplaceAgents } from "@/lib/query";
 import { MarketplaceClient } from "@/components/MarketplaceClient";
 import type { CategoryId } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
+export function generateStaticParams() {
+  return DESKS.map((d) => ({ category: d.id }));
+}
 
 export default async function DeskPage({
   params,
@@ -46,7 +49,7 @@ export default async function DeskPage({
             <h3>Activate</h3>
             <p>{mandate?.description}</p>
             <p className="mono" style={{ color: "var(--muted)", fontSize: 13 }}>
-              Mandate {mandate?.id} · default {mandate?.defaultBudget} tBNB
+              Mandate {mandate?.id} · live A2A quote, then ERC-8183 createJob
             </p>
           </div>
         </div>
@@ -68,7 +71,9 @@ export default async function DeskPage({
           </Link>
         </div>
 
-        <MarketplaceClient initial={initial} lockedCategory={desk.id} />
+        <Suspense fallback={<p className="empty">Loading desk…</p>}>
+          <MarketplaceClient initial={initial} lockedCategory={desk.id} />
+        </Suspense>
       </div>
     </section>
   );

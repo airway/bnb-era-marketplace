@@ -4,7 +4,7 @@ export type CategoryId = "rebalancing" | "grid" | "yield" | "health-factor" | "o
 
 export type ProtocolTag = "A2A" | "MCP" | "OASF" | "Web" | "x402" | "HTTP";
 
-export type TrackRecordSource = "erc-8004-reputation" | "unavailable";
+export type TrackRecordSource = "erc-8004-reputation" | "operator-status" | "unavailable";
 
 export interface AgentService {
   name: string;
@@ -22,6 +22,21 @@ export interface AgentTrackRecord {
   notes: string;
 }
 
+export interface StrategyFact {
+  label: string;
+  value: string;
+  empty?: boolean;
+}
+
+export interface StrategySnapshot {
+  available: boolean;
+  probedAt: string;
+  sourceUrl: string | null;
+  error?: string;
+  facts: StrategyFact[];
+  raw?: Record<string, unknown> | null;
+}
+
 export interface HireReadiness {
   hasIdentity: boolean;
   hasOwner: boolean;
@@ -31,6 +46,8 @@ export interface HireReadiness {
   hasFeedback: boolean;
   hasTrust: boolean;
   hasOnchainUri: boolean;
+  hasLiveStrategy: boolean;
+  hasA2A: boolean;
 }
 
 export interface FitBreakdown {
@@ -74,6 +91,9 @@ export interface MarketplaceAgent {
   chainReadError?: string | null;
   fit?: FitBreakdown[];
   readiness?: HireReadiness;
+  strategy?: StrategySnapshot;
+  a2aUrl?: string | null;
+  operatorBase?: string | null;
 }
 
 export interface AgentListResult {
@@ -98,8 +118,33 @@ export interface HireMandate {
   fields: { id: string; label: string; placeholder: string; defaultValue: string }[];
 }
 
-export type HireStatus = "quoted" | "funded" | "working" | "submitted" | "settled";
-export type PaymentRail = "mock-x402" | "mock-escrow";
+export type HireStatus = "quoted" | "funded" | "working" | "submitted" | "settled" | "failed";
+export type PaymentRail = "erc-8183" | "x402-probe";
+
+export interface UnsignedTx {
+  to: string;
+  data: string;
+  value: string;
+  chainId: number;
+  label: string;
+}
+
+export interface CommerceQuote {
+  accepted: boolean;
+  provider: string | null;
+  priceRaw: string | null;
+  currency: string | null;
+  currencyLabel: string;
+  negotiationHash: string | null;
+  providerSig: string | null;
+  verifyingContract: string | null;
+  expiresAt: number | null;
+  estimatedSeconds: number | null;
+  instructions: string | null;
+  a2aUrl: string | null;
+  raw: unknown;
+  error?: string;
+}
 
 export interface HireRecord {
   hireId: string;
@@ -110,12 +155,21 @@ export interface HireRecord {
   mandateId: string;
   mandateLabel: string;
   budgetTbnb: number;
+  budgetRaw: string | null;
+  currency: string | null;
   paymentRail: PaymentRail;
   payer: string;
   status: HireStatus;
   createdAt: string;
   note: string;
   inputs?: Record<string, string>;
+  quote?: CommerceQuote;
+  txs?: UnsignedTx[];
+  createTxHash?: string | null;
+  fundTxHash?: string | null;
+  jobId?: string | null;
+  notifyResult?: string | null;
+  x402?: { status: number; paymentRequired: unknown; url: string } | null;
 }
 
 export interface HireRequest {

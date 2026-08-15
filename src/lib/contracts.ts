@@ -41,3 +41,27 @@ export function explorerToken(chainId: number, tokenId: string): string {
 export function scanAgentUrl(chainId: number, tokenId: string): string {
   return `https://8004scan.io/agent/${chainId}/${tokenId}`;
 }
+
+/** Official BNBAgent SDK / Pieverse ERC-8183 stack (measured from bnbagent-sdk addresses.ts). */
+export const COMMERCE: Record<number, `0x${string}`> = {
+  [BSC_MAINNET]: "0xEa4DAa3100A767e86FDed867729ae7446476EBA6",
+  [BSC_TESTNET]: "0xa206c0517b6371c6638cd9e4a42cc9f02a33b0de",
+};
+
+export const EVALUATOR_ROUTER: Record<number, `0x${string}`> = {
+  [BSC_MAINNET]: "0x51895229e12f9876011789b04f8698af06ccd6da",
+  [BSC_TESTNET]: "0xd7d36d66d2f1b608a0f943f722d27e3744f66f25",
+};
+
+export const OPTIMISTIC_POLICY: Record<number, `0x${string}`> = {
+  [BSC_MAINNET]: "0x9c01845705b3078aa2e8cff7520a6376fd766de5",
+  [BSC_TESTNET]: "0x4f4678d4439fec812ac7674bb3efb4c8f5fb78a6",
+};
+
+/** United Stables (U) — ERC-8183 payment token on BNB Chain. */
+export const PAYMENT_TOKEN: Record<number, `0x${string}`> = {
+  [BSC_MAINNET]: "0xcE24439F2D9C6a2289F741120FE202248B666666",
+  [BSC_TESTNET]: "0xc70B8741B8B07A6d61E54fd4B20f22Fa648E5565",
+};
+
+export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;

@@ -5,9 +5,19 @@ import { CATEGORY_BY_ID } from "@/lib/categories";
 import { explorerAddress, explorerTx, IDENTITY_REGISTRY, REPUTATION_REGISTRY } from "@/lib/contracts";
 import { sourceLabel } from "@/lib/fallback";
 import { money, scoreLabel, shortAddr } from "@/lib/format";
+import { coverageAgents } from "@/lib/fallback";
 import { getMarketplaceAgent } from "@/lib/query";
 
-export const dynamic = "force-dynamic";
+export function generateStaticParams() {
+  const desks = new Set(
+    coverageAgents()
+      .filter((a) => a.primaryCategory !== "other" || a.categories.some((c) => c !== "other"))
+      .map((a) => a.tokenId),
+  );
+  return coverageAgents()
+    .filter((a) => desks.has(a.tokenId))
+    .map((a) => ({ chainId: String(a.chainId), tokenId: a.tokenId }));
+}
 
 export default async function AgentPage({
   params,
@@ -68,6 +78,10 @@ export default async function AgentPage({
             <dd>{ready?.hasX402 ? "declared" : "not declared"}</dd>
             <dt>Feedback</dt>
             <dd>{ready?.hasFeedback ? `${agent.trackRecord.feedbackCount} events` : "none yet — identity only"}</dd>
+            <dt>A2A</dt>
+            <dd>{ready?.hasA2A ? agent.a2aUrl : "none in registration"}</dd>
+            <dt>Live strategy</dt>
+            <dd>{ready?.hasLiveStrategy ? "operator /status" : "not published or down"}</dd>
             <dt>On-chain URI</dt>
             <dd>{ready?.hasOnchainUri ? "read" : "not resolved"}</dd>
           </dl>
@@ -124,6 +138,25 @@ export default async function AgentPage({
         </div>
 
         <div className="panel" style={{ marginBottom: 16 }}>
+          <h3>Strategy / track record you can hire from</h3>
+          {agent.strategy?.error && <div className="banner">{agent.strategy.error}</div>}
+          {agent.strategy?.sourceUrl && (
+            <p style={{ color: "var(--muted)", fontSize: 13 }}>
+              Probed {agent.strategy.sourceUrl} at {agent.strategy.probedAt}
+            </p>
+          )}
+          <dl className="kv">
+            {(agent.strategy?.facts ?? []).map((f) => (
+              <div key={f.label} style={{ display: "contents" }}>
+                <dt>{f.label}</dt>
+                <dd style={{ color: f.empty ? "var(--muted)" : "inherit" }}>{f.value}</dd>
+              </div>
+            ))}
+          </dl>
+          <p style={{ color: "var(--muted)", fontSize: 13 }}>{agent.trackRecord.notes}</p>
+        </div>
+
+        <div className="panel" style={{ marginBottom: 16 }}>
           <h3>Registration file</h3>
           {registration ? (
             <pre className="mono" style={{ whiteSpace: "pre-wrap", fontSize: 12, color: "var(--muted)" }}>
@@ -173,7 +206,7 @@ export default async function AgentPage({
           </p>
           <AgentHireButton agent={agent} />
           <p style={{ color: "var(--muted)", fontSize: 13 }}>
-            Mock x402 / escrow. No captcha. Advance the job on My hires.
+            Live A2A negotiate + ERC-8183 createJob. No captcha. No demo clock.
           </p>
         </div>
         <div className="panel">

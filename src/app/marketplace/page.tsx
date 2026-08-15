@@ -1,8 +1,6 @@
 import { Suspense } from "react";
 import { MarketplaceClient } from "@/components/MarketplaceClient";
 
-export const dynamic = "force-dynamic";
-
 export default function MarketplacePage() {
   return (
     <section className="section">

@@ -83,7 +83,16 @@ export function looksLikeSpamName(name: string): boolean {
 
 export function readinessOf(agent: Pick<
   MarketplaceAgent,
-  "tokenId" | "owner" | "agentWallet" | "services" | "x402" | "trackRecord" | "supportedTrust" | "tokenUri"
+  | "tokenId"
+  | "owner"
+  | "agentWallet"
+  | "services"
+  | "x402"
+  | "trackRecord"
+  | "supportedTrust"
+  | "tokenUri"
+  | "strategy"
+  | "a2aUrl"
 >): HireReadiness {
   return {
     hasIdentity: Boolean(agent.tokenId),
@@ -94,5 +103,7 @@ export function readinessOf(agent: Pick<
     hasFeedback: agent.trackRecord.feedbackCount > 0 || agent.trackRecord.validationCount > 0,
     hasTrust: agent.supportedTrust.length > 0,
     hasOnchainUri: Boolean(agent.tokenUri),
+    hasLiveStrategy: Boolean(agent.strategy?.available),
+    hasA2A: Boolean(agent.a2aUrl) || agent.services.some((s) => /a2a/i.test(s.name)),
   };
 }

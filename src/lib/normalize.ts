@@ -34,7 +34,10 @@ export interface ScanAgentRaw {
   agent_wallet?: string | null;
   tags?: string[] | null;
   categories?: string[] | null;
-  services?: { name?: string; endpoint?: string; version?: string }[] | null;
+  services?:
+    | { name?: string; endpoint?: string; version?: string }[]
+    | Record<string, { endpoint?: string; version?: string }>
+    | null;
   supported_trust_models?: string[] | null;
   total_feedbacks?: number | null;
   total_validations?: number | null;
@@ -65,9 +68,15 @@ export function normalizeScanAgent(raw: ScanAgentRaw, source: DataSource = "live
   const imageUrl = raw.image_url || off?.image || null;
   const x402 = Boolean(raw.x402_supported || off?.x402Support);
   const rawServices = raw.services ?? off?.services ?? [];
-  const serviceList = Array.isArray(rawServices) ? rawServices : [];
+  const serviceList = Array.isArray(rawServices)
+    ? rawServices
+    : rawServices && typeof rawServices === "object"
+      ? Object.entries(rawServices as Record<string, { endpoint?: string; version?: string }>).map(
+          ([name, s]) => ({ name, endpoint: s?.endpoint, version: s?.version }),
+        )
+      : [];
   const services = serviceList
-    .filter((s) => s?.endpoint)
+    .filter((s) => s?.endpoint && !String(s.endpoint).includes("{agentId}"))
     .map((s) => ({
       name: s.name ?? "service",
       endpoint: s.endpoint as string,

@@ -7,8 +7,8 @@ export default function HiresPage() {
         <div className="kicker">My hires</div>
         <h1 style={{ fontSize: "clamp(32px, 4vw, 52px)" }}>Jobs you started</h1>
         <p className="lede">
-          Hires persist in this browser. Advance the demo clock from quoted → funded → working →
-          submitted → settled. No on-chain settle happens.
+          Quotes and transaction hashes persist in this browser. Status moves when you submit
+          createJob / notify_funded — not a demo clock.
         </p>
         <HiresClient />
       </div>

@@ -56,11 +56,21 @@ export function MarketplaceClient({
       sort,
     });
     fetch(`/api/agents?${qs}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("api");
+        return r.json();
+      })
       .then((body: AgentListResult) => {
         if (cancelled) return;
         setData(body);
         rememberAgents(body.agents);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        if (initial) {
+          setData(initial);
+          rememberAgents(initial.agents);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

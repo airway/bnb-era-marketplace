@@ -52,6 +52,19 @@ export function AgentCard({
           fit {fit?.score ?? 0} · fb {scoreLabel(agent.trackRecord.averageScore)}
         </span>
       </div>
+      {agent.strategy?.available ? (
+        <div className="meta" style={{ color: "var(--green)" }}>
+          {agent.strategy.facts
+            .filter((f) => !f.empty)
+            .slice(0, 2)
+            .map((f) => `${f.label} ${f.value}`)
+            .join(" · ") || "Live /status"}
+        </div>
+      ) : (
+        <div className="meta">
+          <span>{agent.strategy?.error ? "Live feed empty" : "No operator /status"}</span>
+        </div>
+      )}
       <div className="card-actions">
         <Link className="btn" href={`/agents/${agent.chainId}/${agent.tokenId}`}>
           Identity

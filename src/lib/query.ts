@@ -1,9 +1,11 @@
 import { DESKS } from "./categories";
 import { readIdentityOnchain, resolveRegistration } from "./chain";
-import { readinessOf } from "./classify";
+import { looksLikeSpamName, readinessOf } from "./classify";
+import { isCloneNoise, preferLive as sortByLiveSignal } from "./dedup";
 import { coverageAgents, coverageDesk, findCoverageAgent, SNAPSHOT_CAPTURED_AT } from "./fallback";
-import { looksLikeSpamName } from "./classify";
+import { FEATURED_BY_DESK } from "./featured";
 import { tryLiveAgent, tryLiveAgents, tryLiveDesk } from "./scan";
+import { discoverA2A, discoverBase, overlayTrackRecord, probeStrategy } from "./strategy";
 import type { AgentListResult, CategoryId, MarketplaceAgent } from "./types";
 
 export interface ListQuery {
@@ -17,7 +19,15 @@ export interface ListQuery {
   preferLive?: boolean;
 }
 
+function decorate(agent: MarketplaceAgent): MarketplaceAgent {
+  const a2aUrl = discoverA2A(agent);
+  const next = { ...agent, a2aUrl, operatorBase: discoverBase(agent) };
+  next.readiness = readinessOf(next);
+  return next;
+}
+
 function matchesQuery(agent: MarketplaceAgent, q: ListQuery): boolean {
+  if (isCloneNoise(agent)) return false;
   if (q.category && q.category !== "all") {
     const fit = agent.fit?.find((f) => f.category === q.category);
     if (!agent.categories.includes(q.category) && (fit?.score ?? 0) < 2) return false;
@@ -68,7 +78,7 @@ function mergeUnique(rows: MarketplaceAgent[]): MarketplaceAgent[] {
 export async function listMarketplaceAgents(q: ListQuery): Promise<AgentListResult> {
   const page = q.page ?? 1;
   const limit = q.limit ?? 24;
-  const preferLive = q.preferLive !== false;
+  const useLive = q.preferLive !== false;
   const category = q.category && q.category !== "all" ? q.category : undefined;
 
   let warning: string | undefined;
@@ -76,7 +86,7 @@ export async function listMarketplaceAgents(q: ListQuery): Promise<AgentListResu
   let source: AgentListResult["source"] = "snapshot";
   let agents: MarketplaceAgent[] = [];
 
-  if (category && category !== "other" && preferLive) {
+  if (category && category !== "other" && useLive) {
     liveAttempted = true;
     const live = await tryLiveDesk(category);
     if ("agents" in live) {
@@ -86,7 +96,7 @@ export async function listMarketplaceAgents(q: ListQuery): Promise<AgentListResu
       warning = `Live 8004scan search for ${category} failed (${live.error}). Showing bundled BSC identities captured ${SNAPSHOT_CAPTURED_AT}.`;
       agents = coverageDesk(category);
     }
-  } else if (preferLive) {
+  } else if (useLive) {
     liveAttempted = true;
     const live = await tryLiveAgents({ page: 1, limit: 40, search: q.q });
     if ("agents" in live) {
@@ -106,6 +116,23 @@ export async function listMarketplaceAgents(q: ListQuery): Promise<AgentListResu
     if (source === "live") {
       warning = [warning, "Coverage snapshot merged so each desk stays populated with real token IDs."].filter(Boolean).join(" ");
     }
+  }
+
+  agents = agents.map(decorate).filter((a) => !isCloneNoise(a));
+
+  if (category && category !== "other") {
+    const featured = new Set(FEATURED_BY_DESK[category] ?? []);
+    agents = [...agents].sort((a, b) => {
+      const af = featured.has(a.tokenId) ? 1 : 0;
+      const bf = featured.has(b.tokenId) ? 1 : 0;
+      return bf - af || sortByLiveSignal(a, b);
+    });
+    const toProbe = agents.filter((a) => featured.has(a.tokenId) || a.a2aUrl).slice(0, 4);
+    const probed = await Promise.all(
+      toProbe.map(async (a) => overlayTrackRecord({ ...a, strategy: await probeStrategy(a) })),
+    );
+    const byId = new Map(probed.map((a) => [a.tokenId, decorate(a)]));
+    agents = agents.map((a) => byId.get(a.tokenId) ?? a);
   }
 
   let filtered = sortAgents(agents.filter((a) => matchesQuery(a, q)), q.sort ?? (category ? "fit" : "newest"), q.category);
@@ -177,6 +204,9 @@ export async function getMarketplaceAgent(
         : agent.supportedTrust,
     };
   }
+  agent = decorate(agent);
+  agent.strategy = await probeStrategy(agent);
+  agent = overlayTrackRecord(agent);
   agent.readiness = readinessOf(agent);
   return { agent, warning, registration };
 }
@@ -185,7 +215,7 @@ export async function listAllDesks(): Promise<Record<Exclude<CategoryId, "other"
   const entries = await Promise.all(
     DESKS.map(async (d) => [
       d.id,
-      await listMarketplaceAgents({ category: d.id, limit: 8, sort: "fit", preferLive: false }),
+      await listMarketplaceAgents({ category: d.id, limit: 8, sort: "fit", preferLive: true }),
     ] as const),
   );
   return Object.fromEntries(entries) as Record<Exclude<CategoryId, "other">, AgentListResult>;
