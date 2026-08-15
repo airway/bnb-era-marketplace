@@ -4,7 +4,8 @@ export function shortAddr(addr?: string | null): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
-export function money(n: number): string {
+export function money(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return "No published price";
   return `${n.toFixed(3)} quoted`;
 }
 

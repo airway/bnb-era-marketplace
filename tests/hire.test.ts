@@ -7,7 +7,9 @@ import {
   parseJobCreatedId,
 } from "../src/lib/erc8183";
 import { COMMERCE, EVALUATOR_ROUTER, OPTIMISTIC_POLICY } from "../src/lib/contracts";
+import { defaultHirePrice } from "../src/lib/classify";
 import { isCloneNoise } from "../src/lib/dedup";
+import { money } from "../src/lib/format";
 import { FEATURED_BY_DESK } from "../src/lib/featured";
 import { coverageDesk } from "../src/lib/fallback";
 import { confirmHire, fundHire, rememberHire } from "../src/lib/hire";
@@ -131,10 +133,29 @@ describe("clone filter", () => {
     ).toBe(true);
     expect(
       isCloneNoise({
+        name: "FluxAgent_6E44E0",
+        description: "demo",
+        services: [{ name: "api", endpoint: "https://api.example-agent.ai/v1" }],
+      }),
+    ).toBe(true);
+    expect(
+      isCloneNoise({
+        name: "NovaHub_040431",
+        description: "demo",
+        services: [],
+      }),
+    ).toBe(true);
+    expect(
+      isCloneNoise({
         name: "BNB LP Range Rebalancer",
         description: "Pancake V3 range",
         services: [],
       }),
     ).toBe(false);
+  });
+
+  it("does not invent a list hire price", () => {
+    expect(defaultHirePrice("rebalancing", true)).toBeNull();
+    expect(money(null)).toBe("No published price");
   });
 });

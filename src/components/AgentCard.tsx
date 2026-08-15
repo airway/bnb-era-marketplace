@@ -38,6 +38,9 @@ export function AgentCard({
           <span className="badge">{catLabel}</span>
           {agent.source !== "live" && <span className="badge badge-ref">{sourceLabel(agent.source)}</span>}
           {agent.x402 && <span className="badge">x402</span>}
+          {agent.healthStatus?.status && (
+            <span className="badge">{agent.healthStatus.status}</span>
+          )}
         </div>
       </div>
       <h3>{agent.name}</h3>
@@ -47,7 +50,7 @@ export function AgentCard({
         <span>{shortAddr(agent.owner)}</span>
       </div>
       <div className="meta">
-        <span>{money(agent.hirePriceTbnb)}</span>
+        <span>{agent.hirePriceTbnb == null ? "Price on quote" : money(agent.hirePriceTbnb)}</span>
         <span>
           fit {fit?.score ?? 0} · fb {scoreLabel(agent.trackRecord.averageScore)}
         </span>

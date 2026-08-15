@@ -79,8 +79,9 @@ export interface MarketplaceAgent {
   categories: CategoryId[];
   primaryCategory: CategoryId;
   tags: string[];
-  hirePriceTbnb: number;
+  hirePriceTbnb: number | null;
   hireUnit: string;
+  healthStatus?: { status: string; score: number | null; message: string | null } | null;
   source: DataSource;
   trackRecord: AgentTrackRecord;
   explorerUrl: string;

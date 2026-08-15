@@ -1,7 +1,7 @@
 import type { MarketplaceAgent } from "./types";
 
 const CLONE =
-  /ave\.ai|q402|example-agent\.ai|yi he nexus|\bbort\b|energy grid for silicon|hodlai protocol|bsc-hackathon-ia-marketplace\.vercel\.app\/launch/i;
+  /ave\.ai|q402|example-agent\.ai|yi he nexus|\bbort\b|energy grid for silicon|hodlai protocol|bsc-hackathon-ia-marketplace\.vercel\.app\/launch|fluxagent|novahub/i;
 
 export function isCloneNoise(agent: Pick<MarketplaceAgent, "name" | "description" | "services">): boolean {
   const hay = `${agent.name} ${agent.description} ${agent.services.map((s) => s.endpoint).join(" ")}`;

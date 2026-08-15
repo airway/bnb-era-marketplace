@@ -56,6 +56,25 @@ export interface ScanAgentRaw {
       services?: { name?: string; endpoint?: string; version?: string }[];
     };
   } | null;
+  health_status?: {
+    health_score?: number | null;
+    services?: Record<string, { status?: string; message?: string; domain?: string } | null> | null;
+  } | null;
+}
+
+function healthFromRaw(
+  raw: ScanAgentRaw,
+): { status: string; score: number | null; message: string | null } | null {
+  const h = raw.health_status;
+  if (!h) return null;
+  const a2a = h.services?.a2a;
+  const status = a2a?.status || (h.health_score == null ? null : h.health_score >= 80 ? "healthy" : "degraded");
+  if (!status && h.health_score == null) return null;
+  return {
+    status: status ?? "unknown",
+    score: typeof h.health_score === "number" ? h.health_score : null,
+    message: a2a?.message ?? null,
+  };
 }
 
 export function normalizeScanAgent(raw: ScanAgentRaw, source: DataSource = "live"): MarketplaceAgent {
@@ -124,7 +143,8 @@ export function normalizeScanAgent(raw: ScanAgentRaw, source: DataSource = "live
     primaryCategory: primary,
     tags: raw.tags ?? [],
     hirePriceTbnb: defaultHirePrice(primary, x402),
-    hireUnit: "per job (quoted)",
+    hireUnit: "price from live A2A quote \u2014 not a list price",
+    healthStatus: healthFromRaw(raw),
     source,
     trackRecord: {
       source: feedbackCount + validationCount > 0 ? "erc-8004-reputation" : "unavailable",

@@ -45,7 +45,7 @@ function sortAgents(agents: MarketplaceAgent[], sort: ListQuery["sort"], categor
   const copy = [...agents];
   switch (sort) {
     case "price":
-      return copy.sort((a, b) => a.hirePriceTbnb - b.hirePriceTbnb);
+      return copy.sort((a, b) => (a.hirePriceTbnb ?? Number.POSITIVE_INFINITY) - (b.hirePriceTbnb ?? Number.POSITIVE_INFINITY));
     case "score":
       return copy.sort(
         (a, b) =>

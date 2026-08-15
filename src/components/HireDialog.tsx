@@ -111,7 +111,7 @@ export function HireDialog({
     const payload = {
       agentId: agent.id,
       mandateId,
-      budgetTbnb: agent.hirePriceTbnb,
+        budgetTbnb: agent.hirePriceTbnb ?? 0,
       paymentRail: rail,
       payer,
       inputs,

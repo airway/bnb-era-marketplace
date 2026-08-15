@@ -200,6 +200,13 @@ export default async function AgentPage({
           <div className="kicker">Activate</div>
           <h2 style={{ fontSize: 28 }}>{money(agent.hirePriceTbnb)}</h2>
           <p style={{ color: "var(--muted)" }}>{agent.hireUnit}</p>
+          {agent.healthStatus?.status && (
+            <p style={{ color: "var(--muted)", fontSize: 13 }}>
+              Endpoint {agent.healthStatus.status}
+              {agent.healthStatus.score != null ? ` · score ${agent.healthStatus.score}` : ""}
+              {agent.healthStatus.message ? ` \u2014 ${agent.healthStatus.message}` : ""}
+            </p>
+          )}
           <p>
             <Link href={deskHref}>Back to the desk</Link> if you want a different identity for the
             same job.

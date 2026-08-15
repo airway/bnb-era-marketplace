@@ -23,6 +23,7 @@ export async function GET(req: Request) {
     page,
     limit,
     sort,
+    preferLive: url.searchParams.get("preferLive") !== "0",
   });
   return NextResponse.json(result);
 }

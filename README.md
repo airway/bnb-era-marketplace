@@ -8,9 +8,11 @@ A marketplace for **ERC-8004 agents already live on BNB Smart Chain**. Not a por
 
 ## Public URL
 
-**https://bnb-era-marketplace.iceline.workers.dev**
+**https://airway.github.io/**
 
-Cloudflare Worker (OpenNext) on this branch. No account wall. GitHub Pages (`https://airway.github.io/bnb-era-marketplace/`) is not enabled on the repo, so it is not the judge URL.
+Durable GitHub Pages (user site). No captcha, no account wall. Static export of this branch; `_next` assets are published (not Jekyll-stripped).
+
+The Cloudflare Worker `https://bnb-era-marketplace.iceline.workers.dev` may lag this branch until it is redeployed. Do not use `https://airway.github.io/bnb-era-marketplace/` — project Pages is not enabled.
 
 ## Rubric coverage
 

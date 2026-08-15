@@ -111,7 +111,7 @@ export async function createHire(req: HireRequest): Promise<HireRecord> {
     chainId: agent.chainId,
     mandateId: mandate.id,
     mandateLabel: mandate.label,
-    budgetTbnb: req.budgetTbnb,
+    budgetTbnb: req.budgetTbnb || 0,
     budgetRaw: quote?.priceRaw ?? null,
     currency: quote?.currency ?? null,
     paymentRail: req.paymentRail,

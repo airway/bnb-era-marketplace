@@ -73,7 +73,7 @@ export async function quoteHireLocal(
     chainId: agent.chainId,
     mandateId: mandate.id,
     mandateLabel: mandate.label,
-    budgetTbnb: agent.hirePriceTbnb,
+    budgetTbnb: agent.hirePriceTbnb ?? 0,
     budgetRaw: quote?.priceRaw ?? null,
     currency: quote?.currency ?? null,
     paymentRail: opts.paymentRail,

@@ -58,15 +58,9 @@ export function inferProtocols(input: {
   return [...tags];
 }
 
-export function defaultHirePrice(category: CategoryId, x402: boolean): number {
-  const base: Record<CategoryId, number> = {
-    rebalancing: 0.05,
-    grid: 0.08,
-    yield: 0.04,
-    "health-factor": 0.05,
-    other: 0.03,
-  };
-  return Number((base[category] * (x402 ? 1 : 1.1)).toFixed(3));
+/** List price is unpublished unless an operator quote says otherwise. Do not invent one. */
+export function defaultHirePrice(_category?: CategoryId, _x402?: boolean): number | null {
+  return null;
 }
 
 export function looksLikeSpamName(name: string): boolean {
