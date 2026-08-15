@@ -1,4 +1,5 @@
 import { DESKS } from "./categories";
+import { isTermixCatalogUrl } from "./endpoints";
 import type { CategoryId, FitBreakdown, HireReadiness, MarketplaceAgent } from "./types";
 
 export function fitForDesk(text: string, deskId: Exclude<CategoryId, "other">): FitBreakdown {
@@ -102,6 +103,8 @@ export function readinessOf(agent: Pick<
     hasTrust: agent.supportedTrust.length > 0,
     hasOnchainUri: Boolean(agent.tokenUri),
     hasLiveStrategy: Boolean(agent.strategy?.available),
-    hasA2A: Boolean(agent.a2aUrl) || agent.services.some((s) => /a2a/i.test(s.name)),
+    hasA2A:
+      Boolean(agent.a2aUrl) ||
+      agent.services.some((s) => /a2a/i.test(s.name) && !isTermixCatalogUrl(s.endpoint)),
   };
 }

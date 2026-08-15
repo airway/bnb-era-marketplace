@@ -26,9 +26,9 @@ Hire rails: `POST /api/hire` accepts `paymentRail=x402` (on-chain ERC-20 transfe
 
 1. `/` — four desks.
 2. `/desks/rebalancing` — **BNB LP Range Rebalancer** `#265375` (live Pancake V3 range, APR, last reset).
-3. `/desks/grid` — three registered BSC identities: **positioncrew-bounded-grid** `#266234`, **DeFiBot** `#172801`, **TradePilot** `#177310`. Agent Studio `#267697` is filtered. `#266234` registration A2A is a Termix `{agentId}` placeholder; the card says so. We do not invent a fourth grid agent.
-4. `/desks/yield` — live yield identities from 8004scan. `#265876` is listed when the index returns it; the operator host was HTTP 502 when probed — we do not lead with it or invent APR. Agent Studio `#267698` is filtered.
-5. `/desks/health-factor` — **BNB Lending Guardian** `#266933` (live Venus HF / thresholds; HF unpublished stays unpublished).
+3. `/desks/grid` — three registered BSC identities: **positioncrew-bounded-grid** `#266234`, **DeFiBot** `#172801`, **TradePilot** `#177310`. Agent Studio `#267697` is filtered. Registration A2A is a Termix `{agentId}` template; we substitute the token id and probe the live Termix card (`status` / `presence`). That card is not a negotiable A2A (POST 401). We do not invent a fourth grid agent or a hire price.
+4. `/desks/yield` — live yield identities from 8004scan. `#265876` is unfeatured: the operator host returns HTTP 502, so it is not treated as a live A2A and does not lead the desk. We do not invent a replacement operator or APR. Agent Studio `#267698` is filtered.
+5. `/desks/health-factor` — **BNB Lending Guardian** `#266933` (live Venus HF / thresholds). An empty account (`health_factor` null, collateral 0, debt 0) shows unknown — not the Venus `999` / `SAFE` sentinel.
 6. Identity → **Start hire** → wallet signs createJob → registerJob → setBudget → approve U → fund() on AgenticCommerce `0xEa4DAa3100A767e86FDed867729ae7446476EBA6` (U token `0xcE24439F2D9C6a2289F741120FE202248B666666`). `notify_funded` runs after fund() with the JobCreated id.
 
 ## Run
@@ -52,8 +52,9 @@ Optional: `BSC_RPC_URL` (public dataseed is the default). No API keys required. 
 - 8004scan `GET /agents?chainId=56&search=rebalance` returns `#265375`.
 - LP operator `https://bnb-lp-api.172-104-171-139.nip.io/status` publishes range, in-range, APR, PnL, rebalance_count.
 - LP A2A `message/send` + `negotiate` returns a signed ERC-8183 quote (`verifying_contract` = official AgenticCommerce).
-- Guardian `https://bnb-guardian.172-104-171-139.nip.io/status` publishes HF / risk; A2A negotiate returns price `1e18` U.
-- Yield operator `bnb-yield.172-104-171-139.nip.io` returned **502** — listed as down, not estimated.
+- Guardian `https://bnb-guardian.172-104-171-139.nip.io/status` publishes HF / risk; empty Venus account is `null` / `0` / `0` with a `999` performance sentinel — we print unknown, not `999.00` / `SAFE`. A2A negotiate returns price `1e18` U.
+- Yield operator `bnb-yield.172-104-171-139.nip.io` returned **502** — unfeatured, not estimated.
+- Grid `#266234` Termix card `GET .../a2a/agents/266234/card` returns live `status` / `presence`. Host `/status` is 404. POST to the card is 401 — not a quote path.
 - `tokenURI` + `ownerOf` succeed. `totalSupply()` on the identity proxy **reverts**.
 - Ave.ai / Q402 / `example-agent.ai` clones are filtered.
 

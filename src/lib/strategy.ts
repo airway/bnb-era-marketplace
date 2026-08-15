@@ -1,3 +1,4 @@
+import { isTermixCatalogUrl, resolveAgentPlaceholder } from "./endpoints";
 import { FETCH_CACHE } from "./fetch-cache";
 import { operatorFor } from "./featured";
 import type { CategoryId, MarketplaceAgent, StrategyFact, StrategySnapshot } from "./types";
@@ -37,11 +38,11 @@ function str(v: unknown): string | null {
   return null;
 }
 
-function fact(label: string, value: unknown, emptyWhen?: (v: unknown) => boolean): StrategyFact {
+function fact(label: string, value: unknown, emptyWhen?: (v: unknown) => boolean, emptyLabel = "not published"): StrategyFact {
   if (value === null || value === undefined || value === "") {
-    return { label, value: "not published", empty: true };
+    return { label, value: emptyLabel, empty: true };
   }
-  if (emptyWhen?.(value)) return { label, value: String(value), empty: true };
+  if (emptyWhen?.(value)) return { label, value: emptyLabel, empty: true };
   return { label, value: typeof value === "number" ? formatNum(value) : String(value) };
 }
 
@@ -49,6 +50,32 @@ function formatNum(n: number): string {
   if (Math.abs(n) >= 100) return n.toFixed(2);
   if (Math.abs(n) >= 1) return n.toFixed(4);
   return n.toPrecision(4);
+}
+
+function pickField(status: Record<string, unknown>, extra: Record<string, unknown>, key: string): unknown {
+  if (key in status) return status[key];
+  return extra[key];
+}
+
+/** Venus empty-account sentinel: /performance prints 999 when /status HF is null and collateral/debt are 0. */
+export function isHealthFactorSentinel(v: unknown): boolean {
+  const n = num(v);
+  return n !== null && n >= 999;
+}
+
+export function isVenusEmptyAccount(status: Record<string, unknown>, extra: Record<string, unknown> = {}): boolean {
+  const col = num(status.collateral ?? extra.collateral);
+  const debt = num(status.debt ?? extra.debt);
+  const rawHf = pickField(status, extra, "health_factor");
+  const hfUnread = rawHf === null || rawHf === undefined || isHealthFactorSentinel(rawHf);
+  return (col === 0 || col === null) && (debt === 0 || debt === null) && hfUnread;
+}
+
+export function publishedHealthFactor(status: Record<string, unknown>, extra: Record<string, unknown> = {}): unknown {
+  if (isVenusEmptyAccount(status, extra)) return null;
+  const raw = pickField(status, extra, "health_factor");
+  if (raw === null || raw === undefined || isHealthFactorSentinel(raw)) return null;
+  return raw;
 }
 
 function discoverBase(agent: MarketplaceAgent): string | null {
@@ -68,7 +95,8 @@ function discoverBase(agent: MarketplaceAgent): string | null {
   for (const s of agent.services) {
     try {
       const u = new URL(s.endpoint);
-      if (u.hostname.includes("nip.io") || u.hostname.includes("termix") || u.pathname.includes("/status")) {
+      if (isTermixCatalogUrl(s.endpoint)) continue;
+      if (u.hostname.includes("nip.io") || u.pathname.includes("/status")) {
         return `${u.protocol}//${u.host}`;
       }
     } catch {
@@ -78,10 +106,33 @@ function discoverBase(agent: MarketplaceAgent): string | null {
   return null;
 }
 
+export function operatorCannotAnswer(agent: MarketplaceAgent): boolean {
+  if (agent.strategy?.error?.includes("502")) return true;
+  return /\b502\b/.test(agent.healthStatus?.message ?? "");
+}
+
+export function termixCardUrl(agent: MarketplaceAgent): string | null {
+  for (const s of agent.services) {
+    const resolved = resolveAgentPlaceholder(s.endpoint, agent.tokenId);
+    if (!isTermixCatalogUrl(resolved)) continue;
+    try {
+      if (/\/card\/?$/.test(new URL(resolved).pathname)) return resolved;
+    } catch {
+      /* ignore */
+    }
+  }
+  return null;
+}
+
 export function discoverA2A(agent: MarketplaceAgent): string | null {
+  if (operatorCannotAnswer(agent)) return null;
   const known = operatorFor(agent.tokenId);
   if (known?.a2a) return known.a2a;
-  const a2a = agent.services.find((s) => /a2a/i.test(s.name) || s.endpoint.includes("agent-card") || s.endpoint.endsWith("/a2a"));
+  const a2a = agent.services.find((s) => {
+    const ep = resolveAgentPlaceholder(s.endpoint, agent.tokenId);
+    if (isTermixCatalogUrl(ep) || ep.includes("{agentId}")) return false;
+    return /a2a/i.test(s.name) || ep.includes("agent-card") || ep.endsWith("/a2a");
+  });
   if (!a2a) return null;
   if (a2a.endpoint.includes("agent-card")) {
     try {
@@ -93,7 +144,11 @@ export function discoverA2A(agent: MarketplaceAgent): string | null {
   return a2a.endpoint;
 }
 
-function factsFor(category: CategoryId, status: Record<string, unknown>, extra: Record<string, unknown>): StrategyFact[] {
+export function strategyFacts(
+  category: CategoryId,
+  status: Record<string, unknown>,
+  extra: Record<string, unknown>,
+): StrategyFact[] {
   if (category === "rebalancing") {
     const params = (extra.parameters as Record<string, unknown> | undefined) ?? {};
     const target = (extra.target_range_if_rebalanced_now as Record<string, unknown> | undefined) ?? {};
@@ -117,15 +172,14 @@ function factsFor(category: CategoryId, status: Record<string, unknown>, extra: 
   }
   if (category === "health-factor") {
     const th = (extra.thresholds as Record<string, unknown> | undefined) ?? {};
+    const emptyAccount = isVenusEmptyAccount(status, extra);
+    const hf = publishedHealthFactor(status, extra);
+    const risk = emptyAccount || hf === null ? null : (status.risk ?? extra.risk);
     return [
       fact("Venue", status.protocol ?? extra.protocols),
       fact("Account", status.account ?? extra.account),
-      fact(
-        "Health factor",
-        status.health_factor ?? extra.health_factor,
-        (v) => v === null || v === undefined,
-      ),
-      fact("Risk", status.risk ?? extra.risk),
+      fact("Health factor", hf, undefined, "unknown"),
+      fact("Risk", risk, undefined, "unknown"),
       fact("Collateral", status.collateral, (v) => v === 0 || v === 0.0),
       fact("Debt", status.debt, (v) => v === 0 || v === 0.0),
       fact("Safe above", th.safe_above),
@@ -146,6 +200,9 @@ function factsFor(category: CategoryId, status: Record<string, unknown>, extra: 
   }
   if (category === "grid") {
     return [
+      fact("Termix status", status.termix_status),
+      fact("Presence", status.presence ?? extra.presence),
+      fact("Status", status.termix_status ? null : (status.status ?? extra.status)),
       fact("Pair", status.pair ?? extra.pair),
       fact("Range low", status.low ?? status.lower ?? extra.low),
       fact("Range high", status.high ?? status.upper ?? extra.high),
@@ -157,47 +214,83 @@ function factsFor(category: CategoryId, status: Record<string, unknown>, extra: 
   return [fact("Status", status.status)];
 }
 
-export async function probeStrategy(agent: MarketplaceAgent): Promise<StrategySnapshot> {
-  const probedAt = new Date().toISOString();
-  const base = discoverBase(agent);
-  const category = agent.primaryCategory === "other" ? agent.categories[0] ?? "other" : agent.primaryCategory;
+function snapshotFromOperator(
+  category: CategoryId,
+  status: Record<string, unknown>,
+  extra: Record<string, unknown>,
+  probedAt: string,
+  sourceUrl: string,
+): StrategySnapshot {
+  const facts = strategyFacts(category, status, extra).filter((f) => f.value !== "undefined");
+  return {
+    available: true,
+    probedAt,
+    sourceUrl,
+    facts,
+    raw: { status, strategy: extra },
+  };
+}
 
-  if (!base) {
+async function probeTermixCard(url: string, category: CategoryId, probedAt: string): Promise<StrategySnapshot> {
+  const res = await getJson(url);
+  const body =
+    res.ok && typeof res.body === "object" && res.body ? (res.body as Record<string, unknown>) : {};
+  if (!res.ok) {
+    const err = `Termix card ${url} returned ${res.status || "network"}.`;
     return {
       available: false,
       probedAt,
-      sourceUrl: null,
-      error: "No operator status URL in the registration file.",
-      facts: [
-        {
-          label: "Live feed",
-          value: "This identity does not publish /status, /strategy, or /performance.",
-          empty: true,
-        },
-      ],
-      raw: null,
+      sourceUrl: url,
+      error: err,
+      facts: [{ label: "Live feed", value: err, empty: true }],
+      raw: { status: res.body },
     };
   }
-
-  const [statusRes, strategyRes, perfRes] = await Promise.all([
-    getJson(`${base}/status`),
-    getJson(`${base}/strategy`),
-    getJson(`${base}/performance`),
-  ]);
-
-  const status = (statusRes.ok && typeof statusRes.body === "object" && statusRes.body
-    ? (statusRes.body as Record<string, unknown>)
-    : {}) as Record<string, unknown>;
-  const extra = {
-    ...((strategyRes.ok && typeof strategyRes.body === "object" && strategyRes.body
-      ? strategyRes.body
-      : {}) as Record<string, unknown>),
-    ...((perfRes.ok && typeof perfRes.body === "object" && perfRes.body
-      ? perfRes.body
-      : {}) as Record<string, unknown>),
+  const status: Record<string, unknown> = {
+    termix_status: body.status,
+    presence: body.presence,
+    endpoint: body.endpoint,
   };
+  return snapshotFromOperator(category, status, body, probedAt, url);
+}
 
-  if (!statusRes.ok && !strategyRes.ok && !perfRes.ok) {
+export async function probeStrategy(agent: MarketplaceAgent): Promise<StrategySnapshot> {
+  const probedAt = new Date().toISOString();
+  const base = discoverBase(agent);
+  const card = termixCardUrl(agent);
+  const category = agent.primaryCategory === "other" ? agent.categories[0] ?? "other" : agent.primaryCategory;
+
+  if (base) {
+    const [statusRes, strategyRes, perfRes] = await Promise.all([
+      getJson(`${base}/status`),
+      getJson(`${base}/strategy`),
+      getJson(`${base}/performance`),
+    ]);
+
+    const status = (statusRes.ok && typeof statusRes.body === "object" && statusRes.body
+      ? (statusRes.body as Record<string, unknown>)
+      : {}) as Record<string, unknown>;
+    const extra = {
+      ...((strategyRes.ok && typeof strategyRes.body === "object" && strategyRes.body
+        ? strategyRes.body
+        : {}) as Record<string, unknown>),
+      ...((perfRes.ok && typeof perfRes.body === "object" && perfRes.body
+        ? perfRes.body
+        : {}) as Record<string, unknown>),
+    };
+
+    if (statusRes.ok || strategyRes.ok || perfRes.ok) {
+      return snapshotFromOperator(
+        category,
+        status,
+        extra,
+        probedAt,
+        statusRes.ok ? `${base}/status` : `${base}/strategy`,
+      );
+    }
+
+    if (card) return probeTermixCard(card, category, probedAt);
+
     const err =
       statusRes.status === 502
         ? `Operator ${base} returned 502. Live strategy is down — not estimated.`
@@ -212,13 +305,21 @@ export async function probeStrategy(agent: MarketplaceAgent): Promise<StrategySn
     };
   }
 
-  const facts = factsFor(category, status, extra).filter((f) => f.value !== "undefined");
+  if (card) return probeTermixCard(card, category, probedAt);
+
   return {
-    available: true,
+    available: false,
     probedAt,
-    sourceUrl: statusRes.ok ? `${base}/status` : `${base}/strategy`,
-    facts,
-    raw: { status, strategy: extra },
+    sourceUrl: null,
+    error: "No operator status URL in the registration file.",
+    facts: [
+      {
+        label: "Live feed",
+        value: "This identity does not publish /status, /strategy, or /performance.",
+        empty: true,
+      },
+    ],
+    raw: null,
   };
 }
 

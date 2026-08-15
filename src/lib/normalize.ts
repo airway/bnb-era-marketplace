@@ -12,6 +12,7 @@ import {
   primaryCategory,
   readinessOf,
 } from "./classify";
+import { resolveAgentPlaceholder } from "./endpoints";
 import type { DataSource, MarketplaceAgent, ProtocolTag } from "./types";
 
 export interface ScanAgentRaw {
@@ -95,12 +96,13 @@ export function normalizeScanAgent(raw: ScanAgentRaw, source: DataSource = "live
         )
       : [];
   const services = serviceList
-    .filter((s) => s?.endpoint && !String(s.endpoint).includes("{agentId}"))
+    .filter((s) => s?.endpoint)
     .map((s) => ({
       name: s.name ?? "service",
-      endpoint: s.endpoint as string,
+      endpoint: resolveAgentPlaceholder(String(s.endpoint), tokenId),
       version: s.version,
-    }));
+    }))
+    .filter((s) => s.endpoint && !s.endpoint.includes("{agentId}"));
   const protocols = inferProtocols({
     supported: raw.supported_protocols,
     x402,

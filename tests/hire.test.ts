@@ -10,7 +10,7 @@ import { COMMERCE, EVALUATOR_ROUTER, OPTIMISTIC_POLICY } from "../src/lib/contra
 import { defaultHirePrice } from "../src/lib/classify";
 import { isCloneNoise } from "../src/lib/dedup";
 import { money } from "../src/lib/format";
-import { FEATURED_BY_DESK } from "../src/lib/featured";
+import { FEATURED_BY_DESK, OPERATOR_BY_TOKEN } from "../src/lib/featured";
 import { coverageDesk } from "../src/lib/fallback";
 import { confirmHire, fundHire, rememberHire } from "../src/lib/hire";
 import { normalizePaymentRail } from "../src/lib/rails";
@@ -122,6 +122,12 @@ describe("coverage desks stay real", () => {
     expect(FEATURED_BY_DESK.yield).not.toContain("267698");
     expect(coverageDesk("grid").some((a) => a.tokenId === "267697")).toBe(false);
     expect(coverageDesk("yield").some((a) => a.tokenId === "267698")).toBe(false);
+  });
+
+  it("does not treat the 502 yield operator as a live A2A", () => {
+    expect(OPERATOR_BY_TOKEN["265876"]).toBeUndefined();
+    expect(Object.keys(OPERATOR_BY_TOKEN)).toEqual(expect.arrayContaining(["265375", "266933"]));
+    expect(Object.keys(OPERATOR_BY_TOKEN)).not.toContain("265876");
   });
 });
 

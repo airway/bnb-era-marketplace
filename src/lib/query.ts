@@ -5,7 +5,8 @@ import { isCloneNoise, preferLive as sortByLiveSignal } from "./dedup";
 import { coverageAgents, coverageDesk, findCoverageAgent, SNAPSHOT_CAPTURED_AT } from "./fallback";
 import { FEATURED_BY_DESK } from "./featured";
 import { tryLiveAgent, tryLiveAgents, tryLiveDesk } from "./scan";
-import { discoverA2A, discoverBase, overlayTrackRecord, probeStrategy } from "./strategy";
+import { resolveAgentPlaceholder } from "./endpoints";
+import { discoverA2A, discoverBase, overlayTrackRecord, probeStrategy, termixCardUrl } from "./strategy";
 import type { AgentListResult, CategoryId, MarketplaceAgent } from "./types";
 
 export interface ListQuery {
@@ -136,7 +137,15 @@ export async function listMarketplaceAgents(q: ListQuery): Promise<AgentListResu
       return 100;
     };
     agents = [...agents].sort((a, b) => rank(a) - rank(b) || sortByLiveSignal(a, b));
-    const toProbe = agents.filter((a) => featured.has(a.tokenId) || Boolean(a.a2aUrl)).slice(0, 4);
+    const toProbe = agents
+      .filter(
+        (a) =>
+          featured.has(a.tokenId) ||
+          Boolean(a.a2aUrl) ||
+          Boolean(discoverBase(a)) ||
+          Boolean(termixCardUrl(a)),
+      )
+      .slice(0, 6);
     const probed = await Promise.all(
       toProbe.map(async (a) => overlayTrackRecord({ ...a, strategy: await probeStrategy(a) })),
     );
@@ -211,10 +220,16 @@ export async function getMarketplaceAgent(
   }
   const registration = await resolveRegistration(agent.tokenUri ?? null);
   if (registration) {
+    const resolvedTokenId = agent.tokenId;
     const services = Array.isArray(registration.services)
       ? (registration.services as { name?: string; endpoint?: string; version?: string }[])
           .filter((s) => s.endpoint)
-          .map((s) => ({ name: s.name ?? "service", endpoint: s.endpoint as string, version: s.version }))
+          .map((s) => ({
+            name: s.name ?? "service",
+            endpoint: resolveAgentPlaceholder(String(s.endpoint), resolvedTokenId),
+            version: s.version,
+          }))
+          .filter((s) => !s.endpoint.includes("{agentId}"))
       : agent.services;
     agent = {
       ...agent,
