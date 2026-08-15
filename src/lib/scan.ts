@@ -1,5 +1,6 @@
 import { DESKS } from "./categories";
 import { DEFAULT_CHAIN_ID, SCAN_API_BASE } from "./contracts";
+import { isCloneNoise } from "./dedup";
 import { FETCH_CACHE } from "./fetch-cache";
 import { normalizeScanAgent, type ScanAgentRaw } from "./normalize";
 import type { AgentListResult, CategoryId, MarketplaceAgent } from "./types";
@@ -97,6 +98,7 @@ export async function searchLiveDesk(
     }
   }
   const agents = [...seen.values()].filter((a) => {
+    if (isCloneNoise(a)) return false;
     const fit = a.fit?.find((f) => f.category === category);
     return (fit?.score ?? 0) >= 2;
   });

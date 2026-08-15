@@ -7,6 +7,7 @@ import { notifyFunded } from "@/lib/a2a";
 import { buildFundSequence, formatU, parseJobCreatedId } from "@/lib/erc8183";
 import { saveHireLocal } from "@/lib/client-store";
 import { quoteHireLocal } from "@/lib/hire-client";
+import { normalizePaymentRail } from "@/lib/rails";
 import type { HireRecord, MarketplaceAgent, PaymentRail, UnsignedTx } from "@/lib/types";
 
 type Eth = { request: (a: { method: string; params?: unknown[] }) => Promise<unknown> };
@@ -177,8 +178,30 @@ export function HireDialog({
 
       setStepLabel("Requesting live A2A quote…");
       const quoted = hire?.txs?.length ? hire : await quote();
-      if (rail !== "erc-8183") {
-        setHire(quoted);
+      const railKind = normalizePaymentRail(rail);
+      if (railKind === "x402") {
+        const tx = quoted.txs?.[0];
+        if (!tx) throw new Error("No x402 transfer — no HTTP 402 payTo/amount and no A2A price. We will not invent one.");
+        setStepLabel("Sign x402: ERC-20 transfer");
+        const hash = await sendTx(eth, from, tx);
+        await waitReceipt(eth, hash);
+        let next: HireRecord = {
+          ...quoted,
+          payer: from,
+          fundTxHash: hash,
+          status: "funded",
+          note: `x402 exact transfer confirmed ${hash}. Tokens moved on-chain.`,
+        };
+        if (next.quote?.a2aUrl) {
+          setStepLabel("Notifying the agent…");
+          next.notifyResult = await notifyFunded(next.quote.a2aUrl, hash);
+          next.status = "working";
+        }
+        next = await persist("/api/hire/fund", { hire: next, fundTxHash: hash, payer: from }, next);
+        saveHireLocal(next);
+        setHire(next);
+        onHired(next);
+        setStepLabel(null);
         return;
       }
       if (!quoted.txs?.[0] && !quoted.jobId) throw new Error("No unsigned createJob — the agent has no provider address.");
@@ -324,6 +347,7 @@ export function HireDialog({
               <label htmlFor="rail">Rail</label>
               <select id="rail" className="search" value={rail} onChange={(e) => setRail(e.target.value as PaymentRail)}>
                 <option value="erc-8183">ERC-8183 escrow (createJob → fund() moves U on-chain)</option>
+                <option value="x402">x402 exact (on-chain ERC-20 transfer from 402 or A2A price)</option>
               </select>
             </div>
             <div className="field">
@@ -388,7 +412,7 @@ export function HireDialog({
               {busy ? "Negotiating…" : "Request live quote"}
             </button>
           )}
-          {rail === "erc-8183" && !funded && (
+          {!funded && (
             <button className="btn btn-gold" disabled={busy} onClick={() => void startHire()}>
               {busy ? stepLabel ?? "Waiting for wallet…" : hire?.jobId ? "Resume fund sequence" : "Start hire"}
             </button>

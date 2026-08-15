@@ -1,4 +1,5 @@
 import coverage from "@/data/coverage-snapshot.json";
+import { isCloneNoise } from "./dedup";
 import { normalizeScanAgent, type ScanAgentRaw } from "./normalize";
 import type { CategoryId, DataSource, MarketplaceAgent } from "./types";
 
@@ -6,7 +7,9 @@ export const SNAPSHOT_CAPTURED_AT = coverage.capturedAt;
 export const SNAPSHOT_SOURCE = coverage.source;
 
 export function coverageAgents(): MarketplaceAgent[] {
-  return (coverage.agents as ScanAgentRaw[]).map((row) => normalizeScanAgent(row, "snapshot"));
+  return (coverage.agents as ScanAgentRaw[])
+    .map((row) => normalizeScanAgent(row, "snapshot"))
+    .filter((a) => !isCloneNoise(a));
 }
 
 export function coverageDesk(category: Exclude<CategoryId, "other">): MarketplaceAgent[] {

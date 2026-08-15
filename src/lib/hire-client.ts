@@ -2,16 +2,18 @@ import { negotiateA2A, mandateTask } from "./a2a";
 import { MANDATES } from "./categories";
 import { COMMERCE, PAYMENT_TOKEN } from "./contracts";
 import { buildCreateJobTx } from "./erc8183";
+import { normalizePaymentRail } from "./rails";
 import { discoverA2A } from "./strategy";
 import type { CommerceQuote, HireRecord, MarketplaceAgent, PaymentRail, UnsignedTx } from "./types";
-import { probeX402 } from "./x402";
+import { buildX402TransferTx, parseX402Exact, probeX402, x402ExactFromQuote } from "./x402";
 
 export async function quoteHireLocal(
   agent: MarketplaceAgent,
-  opts: { mandateId: string; paymentRail: PaymentRail; payer?: string; inputs?: Record<string, string> },
+  opts: { mandateId: string; paymentRail: PaymentRail | string; payer?: string; inputs?: Record<string, string> },
 ): Promise<HireRecord> {
   const mandate = MANDATES.find((m) => m.id === opts.mandateId);
   if (!mandate) throw new Error("Unknown mandate");
+  const paymentRail = normalizePaymentRail(opts.paymentRail);
   const a2aUrl = agent.a2aUrl || discoverA2A(agent);
   const task = mandateTask(agent, mandate.label, opts.inputs);
   const provider = agent.agentWallet || agent.owner || agent.chainOwner;
@@ -20,14 +22,34 @@ export async function quoteHireLocal(
   let x402 = null;
   let note = "";
 
-  if (opts.paymentRail === "x402-probe") {
+  if (paymentRail === "x402") {
     const target = agent.services[0]?.endpoint || a2aUrl;
-    if (!target) throw new Error("No HTTP endpoint to probe for x402");
-    x402 = await probeX402(target);
-    note =
-      x402.status === 402
-        ? "Live HTTP 402 from the agent endpoint."
-        : `Probed ${target} → HTTP ${x402.status}.`;
+    if (target) x402 = await probeX402(target);
+    if (a2aUrl) quote = await negotiateA2A(a2aUrl, task, agent.chainId);
+    const exact =
+      (x402 ? parseX402Exact(x402) : null) ??
+      x402ExactFromQuote({
+        chainId: agent.chainId,
+        payTo: quote?.provider || provider,
+        amountRaw: quote?.priceRaw ?? null,
+        asset: quote?.currency?.startsWith("0x") ? quote.currency : null,
+      });
+    if (exact) {
+      txs.push(
+        buildX402TransferTx({
+          chainId: agent.chainId,
+          token: exact.asset,
+          to: exact.payTo,
+          amountRaw: exact.amount,
+        }),
+      );
+      note =
+        exact.source === "http-402"
+          ? "Live HTTP 402. Sign the ERC-20 transfer — tokens move on-chain."
+          : "x402 exact transfer from the live A2A price. Not a mock.";
+    } else {
+      note = "No 402 payTo/amount and no A2A price. We will not invent an x402 budget.";
+    }
   } else if (a2aUrl) {
     quote = await negotiateA2A(a2aUrl, task, agent.chainId);
     note = quote.accepted
@@ -54,7 +76,7 @@ export async function quoteHireLocal(
   }
 
   const payTo = quote?.provider || provider;
-  if (opts.paymentRail === "erc-8183" && payTo && payTo.startsWith("0x")) {
+  if (paymentRail === "erc-8183" && payTo && payTo.startsWith("0x")) {
     txs.push(
       buildCreateJobTx({
         chainId: agent.chainId,
@@ -76,7 +98,7 @@ export async function quoteHireLocal(
     budgetTbnb: agent.hirePriceTbnb ?? 0,
     budgetRaw: quote?.priceRaw ?? null,
     currency: quote?.currency ?? null,
-    paymentRail: opts.paymentRail,
+    paymentRail,
     payer: opts.payer?.trim() || "",
     status: "quoted",
     createdAt: new Date().toISOString(),

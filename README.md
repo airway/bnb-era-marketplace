@@ -8,24 +8,11 @@ A marketplace for **ERC-8004 agents already live on BNB Smart Chain**. Not a por
 
 ## Public URL
 
-Cloudflare Pages is the host. A preview was **not** published from this environment — the available Cloudflare credential cannot call Pages APIs.
+**https://bnb-era-marketplace.iceline.workers.dev**
 
-```bash
-npm run pages:build
-npx wrangler pages deploy ./out --project-name=bnb-era-marketplace
-```
+Launch Pad: republish this Worker from `cursor/bnb-era-marketplace-c781` with `npm run deploy` (OpenNext + `wrangler deploy` using `wrangler.jsonc`). This environment cannot write the iceline account.
 
-That command is what this repo is wired for (`wrangler.jsonc` / `wrangler.toml` `pages_build_output_dir = "./out"`). After a successful deploy the URL is **https://bnb-era-marketplace.pages.dev**.
-
-What is missing here:
-
-- Pod `CLOUDFLARE_API_TOKEN` is not a Cloudflare API token (it is a timestamp string, so Wrangler returns “Invalid format for Authorization header”).
-- A temporary Wrangler account token for **Sedate Socks** (`0f23c13e8adea402431c7ca0c28c1e48`) can run `wrangler whoami` but `wrangler pages project list` / `pages deploy` return **Authentication error [code: 10000]**. It does not have **Account → Cloudflare Pages → Edit**.
-- `wrangler login` (OAuth) is not available in this environment.
-
-To publish: create an API token with **Account → Cloudflare Pages → Edit** (and Account Settings: Read if you use GitHub Actions), set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, then run `npm run pages:deploy`. For GitHub-connected deploys, put those two values in repo secrets — they are not in this repo.
-
-Hire on the static Pages host is client-side: live A2A quote, then you sign ERC-8183 `createJob` → `registerJob` → `setBudget` → approve U → `fund()`. `notify_funded` is sent from the browser.
+Hire rails: `POST /api/hire` accepts `paymentRail=x402` (on-chain ERC-20 transfer from a live HTTP 402 or A2A price) and `erc-8183` (AgenticCommerce `fund()`). Mocks stay rejected. Status is not funded until the on-chain settle confirms.
 
 ## Rubric coverage
 
@@ -70,7 +57,7 @@ Optional: `BSC_RPC_URL` (public dataseed is the default). No API keys required. 
 
 ## Stack
 
-Next.js 15. Hire rail is ERC-8183 (BNBAgent / Pieverse kernel) plus optional live x402 probe. Mock x402 / escrow clock removed. A hire is not labelled funded until `fund()` confirms on-chain.
+Next.js 15 on Cloudflare Workers (OpenNext). Hire rails: live x402 exact (ERC-20 transfer) and ERC-8183 escrow. Mock x402 / escrow clock removed. A hire is not labelled funded until the on-chain settle confirms.
 
 ## License
 

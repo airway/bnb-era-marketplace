@@ -98,13 +98,18 @@ export async function listMarketplaceAgents(q: ListQuery): Promise<AgentListResu
     }
   } else if (useLive) {
     liveAttempted = true;
-    const live = await tryLiveAgents({ page: 1, limit: 40, search: q.q });
+    const featuredIds = Object.values(FEATURED_BY_DESK).flat();
+    const [live, featuredRows] = await Promise.all([
+      tryLiveAgents({ page: 1, limit: 40, search: q.q }),
+      Promise.all(featuredIds.map((id) => tryLiveAgent(56, id))),
+    ]);
+    const featured = featuredRows.filter((a): a is MarketplaceAgent => "id" in a);
     if ("agents" in live) {
-      agents = live.agents;
+      agents = mergeUnique([...featured, ...live.agents]);
       source = "live";
     } else {
       warning = `Live 8004scan list failed (${live.error}). Showing bundled coverage snapshot from ${SNAPSHOT_CAPTURED_AT}.`;
-      agents = coverageAgents();
+      agents = mergeUnique([...featured, ...coverageAgents()]);
     }
   } else {
     agents = coverageAgents();

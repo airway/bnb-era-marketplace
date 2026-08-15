@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const body = (await req.json()) as {
       hireId?: string;
       hire?: HireRecord;
-      jobId: string;
+      jobId?: string;
       fundTxHash: string;
       registerTxHash?: string;
       budgetTxHash?: string;
@@ -17,7 +17,8 @@ export async function POST(req: Request) {
       payer?: string;
     };
     if (!body.fundTxHash) throw new Error("fundTxHash required");
-    if (!body.jobId) throw new Error("jobId required");
+    const rail = body.hire?.paymentRail;
+    if (rail !== "x402" && !body.jobId) throw new Error("jobId required");
     const hire = await fundHire(body);
     return NextResponse.json({ hire });
   } catch (err) {

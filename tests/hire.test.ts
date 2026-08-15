@@ -13,7 +13,9 @@ import { money } from "../src/lib/format";
 import { FEATURED_BY_DESK } from "../src/lib/featured";
 import { coverageDesk } from "../src/lib/fallback";
 import { confirmHire, fundHire, rememberHire } from "../src/lib/hire";
+import { normalizePaymentRail } from "../src/lib/rails";
 import type { HireRecord } from "../src/lib/types";
+import { buildX402TransferTx, parseX402Exact } from "../src/lib/x402";
 
 describe("erc-8183 encoding", () => {
   it("builds createJob against the official mainnet kernel", () => {
@@ -176,5 +178,48 @@ describe("clone filter", () => {
   it("does not invent a list hire price", () => {
     expect(defaultHirePrice("rebalancing", true)).toBeNull();
     expect(money(null)).toBe("No published price");
+  });
+});
+
+describe("payment rails", () => {
+  it("accepts x402 and escrow aliases", () => {
+    expect(normalizePaymentRail("x402")).toBe("x402");
+    expect(normalizePaymentRail("x402-probe")).toBe("x402");
+    expect(normalizePaymentRail("erc-8183")).toBe("erc-8183");
+    expect(normalizePaymentRail("escrow")).toBe("erc-8183");
+    expect(() => normalizePaymentRail("mock-x402")).toThrow(/removed/);
+  });
+
+  it("builds an on-chain x402 transfer from a 402 body", () => {
+    const exact = parseX402Exact({
+      url: "https://example.test/status",
+      status: 402,
+      header: null,
+      paymentRequired: {
+        accepts: [
+          {
+            scheme: "exact",
+            network: "eip155:56",
+            maxAmountRequired: "100000000000000000",
+            payTo: "0xd16faAa91F77397Bb84c69FBb89D11011bE11212",
+            asset: "0xcE24439F2D9C6a2289F741120FE202248B666666",
+          },
+        ],
+      },
+    });
+    expect(exact?.amount).toBe("100000000000000000");
+    const tx = buildX402TransferTx({
+      chainId: 56,
+      token: exact!.asset,
+      to: exact!.payTo,
+      amountRaw: exact!.amount,
+    });
+    expect(tx.to.toLowerCase()).toBe("0xce24439f2d9c6a2289f741120fe202248b666666");
+    expect(tx.data.startsWith("0x")).toBe(true);
+    expect(tx.label).toMatch(/x402/);
+  });
+
+  it("does not invent an x402 amount from an empty 402", () => {
+    expect(parseX402Exact({ url: "https://x", status: 200, header: null, paymentRequired: null })).toBeNull();
   });
 });

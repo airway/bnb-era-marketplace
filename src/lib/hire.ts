@@ -4,9 +4,10 @@ import { COMMERCE, PAYMENT_TOKEN } from "./contracts";
 import { buildCreateJobTx } from "./erc8183";
 import { findCoverageAgent } from "./fallback";
 import { getMarketplaceAgent } from "./query";
+import { normalizePaymentRail } from "./rails";
 import { discoverA2A } from "./strategy";
 import type { HireRecord, HireRequest, MarketplaceAgent, UnsignedTx } from "./types";
-import { probeX402 } from "./x402";
+import { buildX402TransferTx, parseX402Exact, probeX402, x402ExactFromQuote } from "./x402";
 
 const hires = new Map<string, HireRecord>();
 
@@ -42,9 +43,7 @@ async function resolveAgent(req: HireRequest): Promise<MarketplaceAgent> {
 export async function createHire(req: HireRequest): Promise<HireRecord> {
   const mandate = MANDATES.find((m) => m.id === req.mandateId);
   if (!mandate) throw new Error("Unknown mandate");
-  if (req.paymentRail !== "erc-8183" && req.paymentRail !== "x402-probe") {
-    throw new Error("Unsupported payment rail — mock x402 / mock escrow were removed");
-  }
+  const paymentRail = normalizePaymentRail(req.paymentRail);
 
   const agent = await resolveAgent(req);
   const a2aUrl = agent.a2aUrl || discoverA2A(agent);
@@ -56,14 +55,36 @@ export async function createHire(req: HireRequest): Promise<HireRecord> {
   const txs: UnsignedTx[] = [];
   let note = "";
 
-  if (req.paymentRail === "x402-probe") {
+  if (paymentRail === "x402") {
     const target = agent.services[0]?.endpoint || a2aUrl;
-    if (!target) throw new Error("No HTTP endpoint to probe for x402");
-    x402 = await probeX402(target);
-    note =
-      x402.status === 402
-        ? "Live HTTP 402 from the agent endpoint. Pay the requirement, then retry the resource — this is not a mock."
-        : `Probed ${target} → HTTP ${x402.status}. No PAYMENT-REQUIRED challenge on this call.`;
+    if (target) x402 = await probeX402(target);
+    if (a2aUrl) quote = await negotiateA2A(a2aUrl, task, agent.chainId);
+    const exact =
+      (x402 ? parseX402Exact(x402) : null) ??
+      x402ExactFromQuote({
+        chainId: agent.chainId,
+        payTo: quote?.provider || provider,
+        amountRaw: quote?.priceRaw ?? null,
+        asset: quote?.currency?.startsWith("0x") ? quote.currency : null,
+      });
+    if (exact) {
+      txs.push(
+        buildX402TransferTx({
+          chainId: agent.chainId,
+          token: exact.asset,
+          to: exact.payTo,
+          amountRaw: exact.amount,
+        }),
+      );
+      note =
+        exact.source === "http-402"
+          ? `Live HTTP 402. Sign the ERC-20 transfer to ${exact.payTo} — tokens move on-chain. Not a mock.`
+          : `No HTTP 402 on this call. Using the live A2A price for an x402 exact transfer of ${exact.amount} to ${exact.payTo}.`;
+    } else {
+      note = x402
+        ? `Probed ${x402.url} → HTTP ${x402.status}. No payTo/amount in the 402 body and no A2A price — we will not invent one.`
+        : "No HTTP endpoint and no A2A price. We will not invent an x402 budget.";
+    }
   } else {
     if (a2aUrl) {
       quote = await negotiateA2A(a2aUrl, task, agent.chainId);
@@ -114,7 +135,7 @@ export async function createHire(req: HireRequest): Promise<HireRecord> {
     budgetTbnb: req.budgetTbnb || 0,
     budgetRaw: quote?.priceRaw ?? null,
     currency: quote?.currency ?? null,
-    paymentRail: req.paymentRail,
+    paymentRail,
     payer: req.payer?.trim() || "",
     status: "quoted",
     createdAt: new Date().toISOString(),
@@ -151,7 +172,7 @@ export async function confirmHire(opts: {
 export async function fundHire(opts: {
   hireId?: string;
   hire?: HireRecord;
-  jobId: string;
+  jobId?: string;
   fundTxHash: string;
   registerTxHash?: string;
   budgetTxHash?: string;
@@ -160,7 +181,21 @@ export async function fundHire(opts: {
 }): Promise<HireRecord> {
   const rec = opts.hire ?? (opts.hireId ? hires.get(opts.hireId) : undefined);
   if (!rec) throw new Error("Hire not found — pass the hire body if the server restarted");
-  if (!opts.fundTxHash) throw new Error("fundTxHash required — a hire is not funded until fund() lands");
+  if (!opts.fundTxHash) throw new Error("fundTxHash required — a hire is not funded until the on-chain settle lands");
+  if (rec.paymentRail === "x402") {
+    rec.fundTxHash = opts.fundTxHash;
+    if (opts.payer) rec.payer = opts.payer;
+    rec.status = "funded";
+    rec.note = `x402 exact transfer confirmed ${opts.fundTxHash}. Tokens moved on-chain.`;
+    const url = rec.quote?.a2aUrl;
+    if (url) {
+      rec.notifyResult = await notifyFunded(url, opts.fundTxHash);
+      rec.status = "working";
+      rec.note = `x402 settled ${opts.fundTxHash}. notify_funded sent to the live A2A endpoint.`;
+    }
+    hires.set(rec.hireId, rec);
+    return rec;
+  }
   if (!opts.jobId) throw new Error("jobId required");
   rec.jobId = opts.jobId;
   rec.fundTxHash = opts.fundTxHash;

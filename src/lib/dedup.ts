@@ -2,7 +2,7 @@ import { STUDIO_STUBS } from "./featured";
 import type { MarketplaceAgent } from "./types";
 
 const CLONE =
-  /ave\.ai|q402|example-agent\.ai|yi he nexus|\bbort\b|energy grid for silicon|hodlai protocol|bsc-hackathon-ia-marketplace\.vercel\.app\/launch|fluxagent|novahub|\(agent studio\)/i;
+  /ave\.ai|\baveai\b|q402|example-agent\.ai|yi he nexus|\bbort\b|energy grid for silicon|hodlai protocol|bsc-hackathon-ia-marketplace\.vercel\.app|fluxagent|novahub|\(agent studio\)|gridmaster ops|yield compass/i;
 
 export function isCloneNoise(
   agent: Pick<MarketplaceAgent, "name" | "description" | "services"> & { tokenId?: string },

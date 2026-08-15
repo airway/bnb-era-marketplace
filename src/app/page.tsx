@@ -3,6 +3,9 @@ import { DESKS } from "@/lib/categories";
 import { listAllDesks } from "@/lib/query";
 import { HireableCard } from "@/components/HireableCard";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const STEPS = [
   { n: "1", t: "Land on a desk", d: "Pick one job: rebalancing, grid, yield, or health factor." },
   { n: "2", t: "Find a live identity", d: "Every card is an ERC-8004 token on BNB Smart Chain." },

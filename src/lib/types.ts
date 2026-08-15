@@ -120,7 +120,7 @@ export interface HireMandate {
 }
 
 export type HireStatus = "quoted" | "created" | "funded" | "working" | "submitted" | "settled" | "failed";
-export type PaymentRail = "erc-8183" | "x402-probe";
+export type PaymentRail = "erc-8183" | "x402";
 
 export interface UnsignedTx {
   to: string;
@@ -180,7 +180,7 @@ export interface HireRequest {
   agentId: string;
   mandateId: string;
   budgetTbnb: number;
-  paymentRail: PaymentRail;
+  paymentRail: PaymentRail | string;
   payer?: string;
   inputs?: Record<string, string>;
 }
