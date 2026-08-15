@@ -15,10 +15,8 @@ describe("A2A quote proxy allowlist", () => {
     expect(isAllowedA2AUrl("not-a-url")).toBe(false);
   });
 
-  it("bakes the live Worker we control, not the dead sedate-socks host", () => {
+  it("bakes the live Worker we control", () => {
     expect(PAGES_A2A_PROXY).toBe("https://era-a2a-proxy.splendid-entree.workers.dev");
-    expect(PAGES_A2A_PROXY).not.toMatch(/sedate-socks/);
-    expect(a2aProxyBases().join(" ")).not.toMatch(/sedate-socks/);
     expect(a2aProxyBases()).toContain(PAGES_A2A_PROXY);
   });
 });

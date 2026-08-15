@@ -24,7 +24,6 @@ export function isStaticPages(): boolean {
 /**
  * Allowlisted A2A quote proxy we control (temporary CF account).
  * GitHub Pages has no /api/a2a — do not use same-origin there.
- * sedate-socks.workers.dev is gone; do not list it.
  */
 export const PAGES_A2A_PROXY = "https://era-a2a-proxy.splendid-entree.workers.dev";
 
@@ -32,12 +31,11 @@ export function a2aProxyBases(): string[] {
   const configured = (process.env.NEXT_PUBLIC_API_BASE ?? "").replace(/\/$/, "");
   if (isStaticPages()) {
     const bases = [PAGES_A2A_PROXY, configured];
-    return [...new Set(bases.filter((b) => b && !b.includes("sedate-socks")))];
+    return [...new Set(bases.filter(Boolean))];
   }
   const raw = ["", configured, PAGES_A2A_PROXY];
   const out: string[] = [];
   for (const b of raw) {
-    if (b.includes("sedate-socks")) continue;
     if (!out.includes(b)) out.push(b);
   }
   return out;
