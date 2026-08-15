@@ -1,0 +1,33 @@
+{
+  "name": "bnb-era-marketplace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ERC-8004 agent marketplace on BNB Smart Chain — Build the Era hackathon",
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start --port 3000",
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "pages:build": "bash scripts/pages-build.sh",
+    "pages:deploy": "npm run pages:build && wrangler pages deploy ./out --project-name=bnb-era-marketplace",
+    "deploy": "opennextjs-cloudflare build && wrangler deploy"
+  },
+  "dependencies": {
+    "next": "^15.4.6",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "viem": "^2.36.0"
+  },
+  "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.2",
+    "@types/node": "^22.17.1",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
+    "wrangler": "^4.123.0"
+  }
+}
