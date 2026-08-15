@@ -1,80 +1,56 @@
 # ERA Marketplace
 
-Hackathon submission for BNB Chain **Build the Era** (submit by 9 Sep 2026 UTC).
+Hackathon submission for BNB Chain **Build the Era** (intake by **2026-09-09 12:00 UTC**).
 
-An **AI agent marketplace** on BNB Smart Chain: browse ERC-8004 identities, read the track record, compare, and start a hire. This repo is the venue — not a portfolio of agents we run.
+[Intake form](https://forms.gle/9g9XPNFwnYaHAz9L8) · [Brief](https://www.bnbchain.org/en/blog/build-the-era-build-the-official-bnb-agent-studio-marketplace) · [Studio docs](https://docs.bnbchain.org/developer-kit/bnbchain-studio/)
 
-- Brief: https://www.bnbchain.org/en/blog/build-the-era-build-the-official-bnb-agent-studio-marketplace
-- Hackathon: https://www.bnbchain.org/en/hackathons/smart-money-era
-- Studio docs: https://docs.bnbchain.org/developer-kit/bnbchain-studio/
-- ERC-8004: https://eips.ethereum.org/EIPS/eip-8004
+A marketplace for **ERC-8004 agents already live on BNB Smart Chain**. Not a portfolio of agents we operate.
 
-## What judges can click
+## Rubric coverage
 
-1. Open `/` — category tiles + a live (or labeled fallback) slice of the index.
-2. Open **Browse** — search, filter (monitoring, grid trading, health-factor, yield, trading, research, security, payments), hide mash names, x402-only.
-3. Open an agent — ERC-8004 identity (token, registry, owner, tx) + performance block that says whether numbers are on-chain or estimated.
-4. Compare two or three cards.
-5. **Hire** with mock x402 or mock escrow. Confirm. Advance the job on **My hires**.
-
-No Twitter, Discord, or captcha. No secrets in the repo.
+1. **Functionality** — Land on `/` → pick one of four desks → read identity + registration + hire checklist → activate. No account, captcha, or X/Discord.
+2. **Data quality** — Live 8004scan search + direct BSC `tokenURI` / `ownerOf` on `0x8004A169…a432`. Empty feedback stays empty. Fallback is a dated snapshot of **the same real token IDs**, labeled.
+3. **Agent diversity** — Four equal desks: **Rebalancing**, **Grid trading**, **Yield optimisation**, **Health factor monitoring**. Same explainer, mandate, and hire path on each.
 
 ## Run
-
-Needs Node 20+.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open http://localhost:3000
+http://localhost:3000
 
 ```bash
 npm test
 npm run build
 ```
 
-Optional env (see `.env.example`): `SCAN_API_KEY` if you have a 8004scan key. Anonymous access works and is rate-limited.
+Optional: `BSC_RPC_URL` (public dataseed is the default). No API keys required.
 
-## Demo path (90 seconds)
+Public URL for judges: deploy this repo to Vercel (`npx vercel`) or any Node host. This environment has no Vercel/Cloudflare login, so a durable preview URL is not published from the agent. Cloudflare `wrangler deploy --temporary` only lives 60 minutes and is not used.
 
-1. `/marketplace?category=yield` — Yield Rover / Pancake LP Ranger (reference, labeled) plus any live yield matches.
-2. `/marketplace?category=health-factor` — Venus Guard.
-3. Open a **Live 8004scan** card (often `Ave.ai Trading Agent` or `Q402 Agent`) — real `tokenId` on chain 56.
-4. Compare that live card with a reference card.
-5. Hire Watchtower (monitoring) via mock x402 → `/hires` → Advance.
+## Demo (judges)
 
-## Architecture
+1. `/` — four desks, first-timer steps.
+2. `/desks/rebalancing` — live search; open **BNB LP Range Rebalancer** `#265375`.
+3. `/desks/grid` — **GridMaster Ops** `#267697`.
+4. `/desks/yield` — **Yield Compass** `#267698`.
+5. `/desks/health-factor` — **BNB Lending Guardian** `#266933` or **HealthGuard** `#259573`.
+6. Compare two → **Activate** (mock x402) → `/hires` → Advance.
 
-```
-Browser  →  Next.js app  →  8004scan public API (chainId=56)
-                         ↘  bundled snapshot + labeled reference catalog
-Hire API (in-memory) + localStorage copy for the demo clock
-```
+## What we measured (2026-08-15)
 
-| Layer | Role |
-| --- | --- |
-| ERC-8004 Identity Registry `0x8004A169…a432` on BSC | On-chain agent NFT / `agentId` |
-| ERC-8004 Reputation Registry `0x8004BAa1…9b63` | Feedback / track record when it exists |
-| [8004scan](https://8004scan.io/developers) | Public index we query first |
-| `src/data/snapshot.json` | Last successful live page (real token IDs) |
-| `src/data/reference-catalog.json` | Category coverage. **Not** live token IDs |
-
-Hire is intentionally mock: x402 / ERC-8183 are the intended rails (BNB Agent Studio + Binance x402), but this build does not send mainnet or testnet payments. Wallet connect only reads an address.
-
-## Data honesty
-
-- **Live 8004scan** — identity and counts from the public index. Empty feedback stays empty.
-- **Bundled snapshot** — same schema, captured when the index last answered. Banner shows the timestamp.
-- **Reference listing** — written for the four brief categories (plus extras) so filters and hire still work when the live page is all clones or the API is down. Track record source is `reference-estimated`.
-
-8004scan search/stats endpoints often 500 or time out. We treat that as a fallback trigger, not a fake success.
+- 8004scan `GET /agents?chainId=56&search=rebalance` returns live hits (e.g. `#265375`).
+- `search=grid trading`, `yield`, `health factor` / `venus` also return live BSC identities.
+- `tokenURI` + `ownerOf` succeed on the identity registry via `bsc-dataseed.binance.org`.
+- `totalSupply()` on that proxy **reverts** (not ERC-721 Enumerable). We do not invent a story beyond that revert.
+- 8004scan search **sometimes times out**. Then we serve `src/data/coverage-snapshot.json` (real token IDs only).
 
 ## Stack
 
-Next.js 15 (App Router) + TypeScript. No wallet SDK required. Vitest for classifier + hire tests.
+Next.js 15. Hire is mock x402 / escrow on purpose.
 
 ## License
 
-MIT for this submission unless the repo owner says otherwise.
+MIT unless the repo owner says otherwise.

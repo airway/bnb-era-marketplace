@@ -22,13 +22,22 @@ export function HireDialog({
       ),
     [agent.categories],
   );
-  const [mandateId, setMandateId] = useState(mandates[0]?.id ?? "watch-wallet");
+  const [mandateId, setMandateId] = useState(mandates[0]?.id ?? "rebalance-range");
   const mandate = mandates.find((m) => m.id === mandateId) ?? mandates[0];
-  const [budget, setBudget] = useState(String(agent.hirePriceTbnb || mandate?.defaultBudget || 0.02));
+  const [budget, setBudget] = useState(String(agent.hirePriceTbnb || mandate?.defaultBudget || 0.04));
   const [rail, setRail] = useState<PaymentRail>("mock-x402");
   const [payer, setPayer] = useState("");
+  const [inputs, setInputs] = useState<Record<string, string>>(() =>
+    Object.fromEntries((mandate?.fields ?? []).map((f) => [f.id, f.defaultValue])),
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function changeMandate(id: string) {
+    setMandateId(id);
+    const next = MANDATES.find((m) => m.id === id);
+    setInputs(Object.fromEntries((next?.fields ?? []).map((f) => [f.id, f.defaultValue])));
+  }
 
   async function connect() {
     const eth = (window as unknown as { ethereum?: { request: (a: { method: string }) => Promise<string[]> } })
@@ -54,6 +63,7 @@ export function HireDialog({
           budgetTbnb: Number(budget),
           paymentRail: rail,
           payer,
+          inputs,
         }),
       });
       const body = await res.json();
@@ -67,18 +77,29 @@ export function HireDialog({
     }
   }
 
+  const ready = agent.readiness;
+  const missing = ready
+    ? [
+        !ready.hasFeedback && "no on-chain feedback yet",
+        !ready.hasEndpoint && "no published endpoint",
+        !ready.hasWallet && "agent wallet unset",
+      ].filter(Boolean)
+    : [];
+
   return (
     <div className="modal-back" role="dialog" aria-modal="true">
       <div className="modal">
-        <div className="kicker">Start a hire</div>
+        <div className="kicker">Activate a hire</div>
         <h2 style={{ marginTop: 8 }}>{agent.name}</h2>
         <p style={{ color: "var(--muted)", marginTop: 0 }}>
-          Testnet / mock payments only. Nothing leaves this browser except the hire record on the
-          local API.
+          Mock payment only. You are commissioning a live BSC identity (#{agent.tokenId}).
         </p>
+        {missing.length > 0 && (
+          <div className="banner">Before you hire: {missing.join(" · ")}. You can still activate.</div>
+        )}
         <div className="field">
           <label htmlFor="mandate">Mandate</label>
-          <select id="mandate" className="search" value={mandateId} onChange={(e) => setMandateId(e.target.value)}>
+          <select id="mandate" className="search" value={mandateId} onChange={(e) => changeMandate(e.target.value)}>
             {mandates.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.label}
@@ -87,8 +108,19 @@ export function HireDialog({
           </select>
           <small style={{ color: "var(--muted)" }}>{mandate?.description}</small>
         </div>
+        {mandate?.fields.map((f) => (
+          <div className="field" key={f.id}>
+            <label htmlFor={f.id}>{f.label}</label>
+            <input
+              id={f.id}
+              placeholder={f.placeholder}
+              value={inputs[f.id] ?? ""}
+              onChange={(e) => setInputs((cur) => ({ ...cur, [f.id]: e.target.value }))}
+            />
+          </div>
+        ))}
         <div className="field">
-          <label htmlFor="budget">Budget</label>
+          <label htmlFor="budget">Budget (tBNB)</label>
           <input id="budget" value={budget} onChange={(e) => setBudget(e.target.value)} />
         </div>
         <div className="field">
@@ -113,7 +145,7 @@ export function HireDialog({
         {error && <p style={{ color: "var(--red)" }}>{error}</p>}
         <div className="card-actions">
           <button className="btn btn-gold" disabled={busy} onClick={submit}>
-            {busy ? "Hiring…" : `Pay ${money(Number(budget) || 0)}`}
+            {busy ? "Hiring…" : `Activate · ${money(Number(budget) || 0)}`}
           </button>
           <button className="btn" onClick={onClose}>
             Cancel

@@ -22,22 +22,29 @@ export default async function AgentPage({
   } catch {
     notFound();
   }
-  const { agent, warning } = result;
-  const cat = CATEGORY_BY_ID[agent.primaryCategory];
+  const { agent, warning, registration } = result;
+  const deskHref =
+    agent.primaryCategory === "other" ? "/marketplace" : `/desks/${agent.primaryCategory}`;
+  const ready = agent.readiness;
 
   return (
     <section className="wrap detail">
       <div>
-        <div className="kicker">Agent identity</div>
+        <div className="kicker">Understand this identity</div>
         <h1 style={{ fontSize: "clamp(32px, 4vw, 56px)" }}>{agent.name}</h1>
         <p className="lede">{agent.description}</p>
         {warning && <div className="banner">{warning}</div>}
         <div className="pills" style={{ margin: "16px 0 24px" }}>
-          {agent.categories.map((c) => (
-            <Link key={c} className="pill" href={`/marketplace?category=${c}`}>
-              {CATEGORY_BY_ID[c].label}
-            </Link>
-          ))}
+          {agent.categories
+            .filter((c) => c !== "other")
+            .map((c) => (
+              <Link key={c} className="pill" href={`/desks/${c}`}>
+                {CATEGORY_BY_ID[c].label}
+                {agent.fit?.find((f) => f.category === c)
+                  ? ` · fit ${agent.fit.find((f) => f.category === c)!.score}`
+                  : ""}
+              </Link>
+            ))}
           {agent.protocols.map((p) => (
             <span key={p} className="badge">
               {p}
@@ -47,13 +54,33 @@ export default async function AgentPage({
         </div>
 
         <div className="panel" style={{ marginBottom: 16 }}>
-          <h3>ERC-8004 identity</h3>
+          <h3>Can you hire this?</h3>
+          <dl className="kv">
+            <dt>On-chain id</dt>
+            <dd>{ready?.hasIdentity ? `yes · #${agent.tokenId}` : "missing"}</dd>
+            <dt>Owner</dt>
+            <dd>{ready?.hasOwner ? shortAddr(agent.owner) : "unset"}</dd>
+            <dt>Agent wallet</dt>
+            <dd>{ready?.hasWallet ? shortAddr(agent.agentWallet) : "not set on registration"}</dd>
+            <dt>Endpoint</dt>
+            <dd>{ready?.hasEndpoint ? "published" : "none in registration file"}</dd>
+            <dt>x402</dt>
+            <dd>{ready?.hasX402 ? "declared" : "not declared"}</dd>
+            <dt>Feedback</dt>
+            <dd>{ready?.hasFeedback ? `${agent.trackRecord.feedbackCount} events` : "none yet — identity only"}</dd>
+            <dt>On-chain URI</dt>
+            <dd>{ready?.hasOnchainUri ? "read" : "not resolved"}</dd>
+          </dl>
+        </div>
+
+        <div className="panel" style={{ marginBottom: 16 }}>
+          <h3>ERC-8004 identity (BSC)</h3>
           <dl className="kv">
             <dt>agentId</dt>
             <dd>{agent.tokenId}</dd>
             <dt>agentRegistry</dt>
             <dd>{agent.agentRegistry}</dd>
-            <dt>Owner</dt>
+            <dt>Index owner</dt>
             <dd>
               {agent.owner ? (
                 <a href={explorerAddress(agent.chainId, agent.owner)}>{agent.owner}</a>
@@ -61,8 +88,16 @@ export default async function AgentPage({
                 "—"
               )}
             </dd>
-            <dt>Agent wallet</dt>
-            <dd>{agent.agentWallet ?? "not set"}</dd>
+            <dt>ownerOf (RPC)</dt>
+            <dd>
+              {agent.chainOwner ? (
+                <a href={explorerAddress(agent.chainId, agent.chainOwner)}>{agent.chainOwner}</a>
+              ) : (
+                agent.chainReadError ?? "—"
+              )}
+            </dd>
+            <dt>tokenURI</dt>
+            <dd>{agent.tokenUri ?? "—"}</dd>
             <dt>Identity registry</dt>
             <dd>
               <a href={explorerAddress(agent.chainId, IDENTITY_REGISTRY[agent.chainId] ?? agent.registry)}>
@@ -83,15 +118,29 @@ export default async function AgentPage({
                 "—"
               )}
             </dd>
-            <dt>Supported trust</dt>
-            <dd>{agent.supportedTrust.join(", ") || "—"}</dd>
+            <dt>RPC read at</dt>
+            <dd>{agent.chainReadAt ?? "—"}</dd>
           </dl>
+        </div>
+
+        <div className="panel" style={{ marginBottom: 16 }}>
+          <h3>Registration file</h3>
+          {registration ? (
+            <pre className="mono" style={{ whiteSpace: "pre-wrap", fontSize: 12, color: "var(--muted)" }}>
+              {JSON.stringify(registration, null, 2).slice(0, 4000)}
+            </pre>
+          ) : (
+            <p style={{ color: "var(--muted)" }}>
+              Could not decode tokenURI as JSON (ipfs/https timeout or non-JSON). Identity still
+              exists on-chain.
+            </p>
+          )}
         </div>
 
         <div className="panel">
           <h3>Services</h3>
           {agent.services.length === 0 ? (
-            <p style={{ color: "var(--muted)" }}>No A2A / MCP / HTTP endpoints published on the registration file.</p>
+            <p style={{ color: "var(--muted)" }}>No A2A / MCP / HTTP endpoints in the registration file.</p>
           ) : (
             <table className="table">
               <thead>
@@ -115,13 +164,16 @@ export default async function AgentPage({
 
       <aside>
         <div className="panel" style={{ marginBottom: 16 }}>
-          <div className="kicker">Hire</div>
+          <div className="kicker">Activate</div>
           <h2 style={{ fontSize: 28 }}>{money(agent.hirePriceTbnb)}</h2>
           <p style={{ color: "var(--muted)" }}>{agent.hireUnit}</p>
-          <p>{cat.blurb}</p>
+          <p>
+            <Link href={deskHref}>Back to the desk</Link> if you want a different identity for the
+            same job.
+          </p>
           <AgentHireButton agent={agent} />
           <p style={{ color: "var(--muted)", fontSize: 13 }}>
-            Mock payment. Wallet optional. See My hires after you confirm.
+            Mock x402 / escrow. No captcha. Advance the job on My hires.
           </p>
         </div>
         <div className="panel">
@@ -136,19 +188,12 @@ export default async function AgentPage({
             <dd>
               {agent.trackRecord.successfulValidations}/{agent.trackRecord.validationCount}
             </dd>
-            <dt>Jobs (est.)</dt>
-            <dd>{agent.trackRecord.jobsCompleted}</dd>
           </dl>
           <p style={{ color: "var(--muted)", fontSize: 13 }}>{agent.trackRecord.notes}</p>
-          {agent.source !== "reference" && (
-            <p>
-              <a href={agent.scanUrl}>Open on 8004scan</a>
-              {" · "}
-              <a href={agent.explorerUrl}>Token on BscScan</a>
-            </p>
-          )}
           <p>
-            Owner {shortAddr(agent.owner)} · {agent.active ? "active" : "inactive"}
+            <a href={agent.scanUrl}>8004scan</a>
+            {" · "}
+            <a href={agent.explorerUrl}>BscScan token</a>
           </p>
         </div>
       </aside>

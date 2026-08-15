@@ -1,6 +1,9 @@
+import { DESKS } from "./categories";
+import { readIdentityOnchain, resolveRegistration } from "./chain";
+import { readinessOf } from "./classify";
+import { coverageAgents, coverageDesk, findCoverageAgent, SNAPSHOT_CAPTURED_AT } from "./fallback";
 import { looksLikeSpamName } from "./classify";
-import { allFallbackAgents, referenceAgents, snapshotAgents, snapshotPagination, SNAPSHOT_CAPTURED_AT } from "./fallback";
-import { tryLiveAgent, tryLiveAgents } from "./scan";
+import { tryLiveAgent, tryLiveAgents, tryLiveDesk } from "./scan";
 import type { AgentListResult, CategoryId, MarketplaceAgent } from "./types";
 
 export interface ListQuery {
@@ -8,29 +11,27 @@ export interface ListQuery {
   category?: CategoryId | "all";
   x402?: boolean;
   hideSpam?: boolean;
-  includeReference?: boolean;
   page?: number;
   limit?: number;
-  sort?: "newest" | "price" | "score" | "name";
+  sort?: "newest" | "price" | "score" | "name" | "fit";
   preferLive?: boolean;
 }
 
 function matchesQuery(agent: MarketplaceAgent, q: ListQuery): boolean {
-  if (q.category && q.category !== "all" && !agent.categories.includes(q.category)) {
-    return false;
+  if (q.category && q.category !== "all") {
+    const fit = agent.fit?.find((f) => f.category === q.category);
+    if (!agent.categories.includes(q.category) && (fit?.score ?? 0) < 2) return false;
   }
   if (q.x402 && !agent.x402) return false;
-  if (q.hideSpam && looksLikeSpamName(agent.name) && agent.source !== "reference") {
-    return false;
-  }
+  if (q.hideSpam && looksLikeSpamName(agent.name)) return false;
   if (q.q) {
-    const hay = `${agent.name} ${agent.description} ${agent.tokenId} ${agent.owner} ${agent.categories.join(" ")}`.toLowerCase();
+    const hay = `${agent.name} ${agent.description} ${agent.tokenId} ${agent.owner}`.toLowerCase();
     if (!hay.includes(q.q.toLowerCase())) return false;
   }
   return true;
 }
 
-function sortAgents(agents: MarketplaceAgent[], sort: ListQuery["sort"]): MarketplaceAgent[] {
+function sortAgents(agents: MarketplaceAgent[], sort: ListQuery["sort"], category?: CategoryId | "all"): MarketplaceAgent[] {
   const copy = [...agents];
   switch (sort) {
     case "price":
@@ -43,90 +44,149 @@ function sortAgents(agents: MarketplaceAgent[], sort: ListQuery["sort"]): Market
       );
     case "name":
       return copy.sort((a, b) => a.name.localeCompare(b.name));
+    case "fit":
+      return copy.sort((a, b) => {
+        const cat = category && category !== "all" ? category : a.primaryCategory;
+        const as = a.fit?.find((f) => f.category === cat)?.score ?? 0;
+        const bs = b.fit?.find((f) => f.category === cat)?.score ?? 0;
+        return bs - as;
+      });
     default:
       return copy.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
   }
 }
 
-function paginate(agents: MarketplaceAgent[], page: number, limit: number) {
-  const start = (page - 1) * limit;
-  return {
-    slice: agents.slice(start, start + limit),
-    total: agents.length,
-    hasMore: start + limit < agents.length,
-  };
+function mergeUnique(rows: MarketplaceAgent[]): MarketplaceAgent[] {
+  const map = new Map<string, MarketplaceAgent>();
+  for (const a of rows) {
+    const prev = map.get(a.tokenId);
+    if (!prev || (a.source === "live" && prev.source !== "live")) map.set(a.tokenId, a);
+  }
+  return [...map.values()];
 }
 
 export async function listMarketplaceAgents(q: ListQuery): Promise<AgentListResult> {
   const page = q.page ?? 1;
   const limit = q.limit ?? 24;
-  const includeReference = q.includeReference !== false;
   const preferLive = q.preferLive !== false;
+  const category = q.category && q.category !== "all" ? q.category : undefined;
 
-  let live: AgentListResult | { error: string } | null = null;
-  if (preferLive) {
-    live = await tryLiveAgents({
-      page,
-      limit,
-      search: q.q,
-    });
-  }
+  let warning: string | undefined;
+  let liveAttempted = false;
+  let source: AgentListResult["source"] = "snapshot";
+  let agents: MarketplaceAgent[] = [];
 
-  if (live && "agents" in live) {
-    let agents = live.agents;
-    if (includeReference) {
-      const extras = referenceAgents().filter((a) => matchesQuery(a, q));
-      agents = [...extras, ...agents];
+  if (category && category !== "other" && preferLive) {
+    liveAttempted = true;
+    const live = await tryLiveDesk(category);
+    if ("agents" in live) {
+      agents = live.agents;
+      source = "live";
+    } else {
+      warning = `Live 8004scan search for ${category} failed (${live.error}). Showing bundled BSC identities captured ${SNAPSHOT_CAPTURED_AT}.`;
+      agents = coverageDesk(category);
     }
-    agents = agents.filter((a) => matchesQuery(a, { ...q, q: undefined }));
-    agents = sortAgents(agents, q.sort);
-    return {
-      ...live,
-      agents,
-      total: (live.total ?? agents.length) + (includeReference ? referenceAgents().filter((a) => matchesQuery(a, q)).length : 0),
-      warning: undefined,
-    };
+  } else if (preferLive) {
+    liveAttempted = true;
+    const live = await tryLiveAgents({ page: 1, limit: 40, search: q.q });
+    if ("agents" in live) {
+      agents = live.agents;
+      source = "live";
+    } else {
+      warning = `Live 8004scan list failed (${live.error}). Showing bundled coverage snapshot from ${SNAPSHOT_CAPTURED_AT}.`;
+      agents = coverageAgents();
+    }
+  } else {
+    agents = coverageAgents();
   }
 
-  const pool = includeReference ? allFallbackAgents() : snapshotAgents();
-  const filtered = sortAgents(pool.filter((a) => matchesQuery(a, q)), q.sort);
-  const { slice, total, hasMore } = paginate(filtered, page, limit);
-  const pag = snapshotPagination();
+  if (agents.length < 4) {
+    const extra = category && category !== "other" ? coverageDesk(category) : coverageAgents();
+    agents = mergeUnique([...agents, ...extra]);
+    if (source === "live") {
+      warning = [warning, "Coverage snapshot merged so each desk stays populated with real token IDs."].filter(Boolean).join(" ");
+    }
+  }
+
+  let filtered = sortAgents(agents.filter((a) => matchesQuery(a, q)), q.sort ?? (category ? "fit" : "newest"), q.category);
+  const total = filtered.length;
+  const start = (page - 1) * limit;
+  filtered = filtered.slice(start, start + limit);
+
+  const deskCounts: AgentListResult["deskCounts"] = {};
+  for (const d of DESKS) {
+    deskCounts[d.id] = agents.filter((a) => a.categories.includes(d.id)).length;
+  }
+
   return {
-    agents: slice,
+    agents: filtered,
     total,
     page,
     limit,
-    hasMore,
-    source: slice.some((a) => a.source === "snapshot") ? "snapshot" : "reference",
-    liveAttempted: preferLive,
-    warning:
-      live && "error" in live
-        ? `Live 8004scan unavailable (${live.error}). Showing bundled snapshot from ${SNAPSHOT_CAPTURED_AT} plus labeled reference listings.`
-        : `Showing bundled snapshot from ${SNAPSHOT_CAPTURED_AT} plus labeled reference listings.`,
-    capturedAt: SNAPSHOT_CAPTURED_AT,
+    hasMore: start + limit < total,
+    source,
+    liveAttempted,
+    warning,
+    capturedAt: source === "snapshot" ? SNAPSHOT_CAPTURED_AT : undefined,
+    deskCounts,
   };
 }
 
 export async function getMarketplaceAgent(
   chainId: number,
   tokenId: string,
-): Promise<{ agent: MarketplaceAgent; warning?: string }> {
-  if (tokenId.startsWith("ref-") || tokenId.startsWith("ref:")) {
-    const agent = allFallbackAgents().find((a) => a.tokenId === tokenId || a.id === tokenId);
-    if (!agent) throw new Error("Reference agent not found");
-    return { agent };
+): Promise<{ agent: MarketplaceAgent; warning?: string; registration?: Record<string, unknown> | null }> {
+  const live = await tryLiveAgent(chainId, tokenId);
+  let agent: MarketplaceAgent | undefined = "id" in live ? live : undefined;
+  let warning: string | undefined;
+  if (!agent) {
+    agent = findCoverageAgent(tokenId);
+    if (!agent) throw new Error("error" in live ? live.error : "Agent not found");
+    warning = `Live 8004scan detail failed (${"error" in live ? live.error : "unknown"}). Showing bundled copy of this real token ID.`;
   }
 
-  const live = await tryLiveAgent(chainId, tokenId);
-  if ("id" in live) return { agent: live };
-
-  const fallback = allFallbackAgents().find((a) => a.tokenId === tokenId || a.id === tokenId);
-  if (fallback) {
-    return {
-      agent: fallback,
-      warning: `Live 8004scan unavailable (${live.error}). Showing ${fallback.source} copy.`,
+  const chain = await readIdentityOnchain(chainId, tokenId);
+  if (chain.error) {
+    warning = [warning, `On-chain tokenURI/ownerOf failed (${chain.error}).`].filter(Boolean).join(" ");
+  } else {
+    agent = {
+      ...agent,
+      tokenUri: chain.tokenUri ?? agent.tokenUri,
+      chainOwner: chain.owner,
+      owner: agent.owner || chain.owner || "",
+      chainReadAt: chain.readAt,
+      source: agent.source === "snapshot" ? "snapshot" : "live",
     };
   }
-  throw new Error(live.error);
+  const registration = await resolveRegistration(agent.tokenUri ?? null);
+  if (registration) {
+    const services = Array.isArray(registration.services)
+      ? (registration.services as { name?: string; endpoint?: string; version?: string }[])
+          .filter((s) => s.endpoint)
+          .map((s) => ({ name: s.name ?? "service", endpoint: s.endpoint as string, version: s.version }))
+      : agent.services;
+    agent = {
+      ...agent,
+      name: (typeof registration.name === "string" && registration.name) || agent.name,
+      description:
+        (typeof registration.description === "string" && registration.description) || agent.description,
+      services: services.length ? services : agent.services,
+      x402: typeof registration.x402Support === "boolean" ? registration.x402Support : agent.x402,
+      supportedTrust: Array.isArray(registration.supportedTrust)
+        ? (registration.supportedTrust as string[])
+        : agent.supportedTrust,
+    };
+  }
+  agent.readiness = readinessOf(agent);
+  return { agent, warning, registration };
+}
+
+export async function listAllDesks(): Promise<Record<Exclude<CategoryId, "other">, AgentListResult>> {
+  const entries = await Promise.all(
+    DESKS.map(async (d) => [
+      d.id,
+      await listMarketplaceAgents({ category: d.id, limit: 8, sort: "fit", preferLive: false }),
+    ] as const),
+  );
+  return Object.fromEntries(entries) as Record<Exclude<CategoryId, "other">, AgentListResult>;
 }

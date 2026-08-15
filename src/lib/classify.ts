@@ -1,39 +1,44 @@
-import { CATEGORIES } from "./categories";
-import type { CategoryId, ProtocolTag } from "./types";
+import { DESKS } from "./categories";
+import type { CategoryId, FitBreakdown, HireReadiness, MarketplaceAgent } from "./types";
 
-const PRIORITY: CategoryId[] = [
-  "health-factor",
-  "grid",
-  "yield",
-  "monitoring",
-  "security",
-  "payments",
-  "research",
-  "trading",
-  "other",
-];
-
-export function classifyText(text: string): CategoryId[] {
+export function fitForDesk(text: string, deskId: Exclude<CategoryId, "other">): FitBreakdown {
+  const desk = DESKS.find((d) => d.id === deskId)!;
   const hay = text.toLowerCase();
-  const hits = new Set<CategoryId>();
-  for (const cat of CATEGORIES) {
-    if (cat.id === "other") continue;
-    if (cat.keywords.some((k) => hay.includes(k))) hits.add(cat.id);
+  const matched: string[] = [];
+  let score = 0;
+  for (const k of desk.keywords) {
+    if (hay.includes(k.toLowerCase())) {
+      score += 2;
+      matched.push(k);
+    }
   }
-  if (hits.size === 0) hits.add("other");
-  return [...hits].sort((a, b) => PRIORITY.indexOf(a) - PRIORITY.indexOf(b));
+  for (const p of desk.penalties) {
+    const pat = p.startsWith("^") ? new RegExp(p, "i") : null;
+    if (pat ? pat.test(hay) : hay.includes(p.toLowerCase())) score -= 3;
+  }
+  return { category: deskId, score, matched };
 }
 
-export function primaryCategory(categories: CategoryId[]): CategoryId {
-  return [...categories].sort((a, b) => PRIORITY.indexOf(a) - PRIORITY.indexOf(b))[0] ?? "other";
+export function classifyText(text: string): FitBreakdown[] {
+  return DESKS.map((d) => fitForDesk(text, d.id)).sort((a, b) => b.score - a.score);
+}
+
+export function categoriesFromFits(fits: FitBreakdown[], min = 2): CategoryId[] {
+  const hits = fits.filter((f) => f.score >= min).map((f) => f.category);
+  return hits.length ? hits : ["other"];
+}
+
+export function primaryCategory(fits: FitBreakdown[]): CategoryId {
+  const top = fits[0];
+  return top && top.score >= 2 ? top.category : "other";
 }
 
 export function inferProtocols(input: {
   supported?: string[] | null;
   x402?: boolean;
   services?: { name?: string; endpoint?: string }[] | null;
-}): ProtocolTag[] {
-  const tags = new Set<ProtocolTag>();
+}): Array<"A2A" | "MCP" | "OASF" | "Web" | "x402" | "HTTP"> {
+  const tags = new Set<"A2A" | "MCP" | "OASF" | "Web" | "x402" | "HTTP">();
   for (const raw of input.supported ?? []) {
     const p = raw.toUpperCase();
     if (p.includes("A2A")) tags.add("A2A");
@@ -55,17 +60,13 @@ export function inferProtocols(input: {
 
 export function defaultHirePrice(category: CategoryId, x402: boolean): number {
   const base: Record<CategoryId, number> = {
-    monitoring: 0.02,
+    rebalancing: 0.05,
     grid: 0.08,
-    "health-factor": 0.05,
     yield: 0.04,
-    trading: 0.03,
-    research: 0.025,
-    security: 0.035,
-    payments: 0.02,
-    other: 0.02,
+    "health-factor": 0.05,
+    other: 0.03,
   };
-  return Number((base[category] * (x402 ? 1 : 1.15)).toFixed(3));
+  return Number((base[category] * (x402 ? 1 : 1.1)).toFixed(3));
 }
 
 export function looksLikeSpamName(name: string): boolean {
@@ -78,4 +79,20 @@ export function looksLikeSpamName(name: string): boolean {
     if (vowels / n.length < 0.4) return true;
   }
   return false;
+}
+
+export function readinessOf(agent: Pick<
+  MarketplaceAgent,
+  "tokenId" | "owner" | "agentWallet" | "services" | "x402" | "trackRecord" | "supportedTrust" | "tokenUri"
+>): HireReadiness {
+  return {
+    hasIdentity: Boolean(agent.tokenId),
+    hasOwner: Boolean(agent.owner),
+    hasWallet: Boolean(agent.agentWallet),
+    hasEndpoint: agent.services.length > 0,
+    hasX402: agent.x402,
+    hasFeedback: agent.trackRecord.feedbackCount > 0 || agent.trackRecord.validationCount > 0,
+    hasTrust: agent.supportedTrust.length > 0,
+    hasOnchainUri: Boolean(agent.tokenUri),
+  };
 }

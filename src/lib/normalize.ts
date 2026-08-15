@@ -4,7 +4,14 @@ import {
   IDENTITY_REGISTRY,
   scanAgentUrl,
 } from "./contracts";
-import { classifyText, defaultHirePrice, inferProtocols, primaryCategory } from "./classify";
+import {
+  categoriesFromFits,
+  classifyText,
+  defaultHirePrice,
+  inferProtocols,
+  primaryCategory,
+  readinessOf,
+} from "./classify";
 import type { DataSource, MarketplaceAgent, ProtocolTag } from "./types";
 
 export interface ScanAgentRaw {
@@ -35,6 +42,7 @@ export interface ScanAgentRaw {
   average_score?: number | null;
   total_score?: number | null;
   raw_metadata?: {
+    offchain_uri?: string | null;
     offchain_content?: {
       name?: string;
       description?: string;
@@ -56,7 +64,9 @@ export function normalizeScanAgent(raw: ScanAgentRaw, source: DataSource = "live
   const description = (raw.description || off?.description || "No registration description published.").trim();
   const imageUrl = raw.image_url || off?.image || null;
   const x402 = Boolean(raw.x402_supported || off?.x402Support);
-  const services = (raw.services ?? off?.services ?? [])
+  const rawServices = raw.services ?? off?.services ?? [];
+  const serviceList = Array.isArray(rawServices) ? rawServices : [];
+  const services = serviceList
     .filter((s) => s?.endpoint)
     .map((s) => ({
       name: s.name ?? "service",
@@ -69,8 +79,9 @@ export function normalizeScanAgent(raw: ScanAgentRaw, source: DataSource = "live
     services,
   });
   const text = `${name} ${description} ${(raw.tags ?? []).join(" ")} ${(raw.categories ?? []).join(" ")}`;
-  const categories = classifyText(text);
-  const primary = primaryCategory(categories);
+  const fits = classifyText(text);
+  const categories = categoriesFromFits(fits);
+  const primary = primaryCategory(fits);
   const feedbackCount = raw.total_feedbacks ?? 0;
   const validationCount = raw.total_validations ?? 0;
   const successful = raw.successful_validations ?? 0;
@@ -78,8 +89,9 @@ export function normalizeScanAgent(raw: ScanAgentRaw, source: DataSource = "live
   const trust = raw.supported_trust_models?.length
     ? raw.supported_trust_models
     : off?.supportedTrust ?? [];
+  const tokenUri = raw.raw_metadata?.offchain_uri ?? null;
 
-  return {
+  const agent: MarketplaceAgent = {
     id: raw.agent_id ?? `${chainId}:${registry}:${tokenId}`,
     tokenId,
     chainId,
@@ -114,10 +126,14 @@ export function normalizeScanAgent(raw: ScanAgentRaw, source: DataSource = "live
       successfulValidations: successful,
       notes:
         feedbackCount + validationCount > 0
-          ? "On-chain reputation / validation counts from the ERC-8004 index."
-          : "No feedback or validation events indexed yet. Identity is on-chain; performance is empty.",
+          ? "Feedback / validation counts from the ERC-8004 index. Not a simulated PnL."
+          : "No feedback or validation events indexed. You are hiring an on-chain identity, not a proven score.",
     },
     explorerUrl: explorerToken(chainId, tokenId),
     scanUrl: scanAgentUrl(chainId, tokenId),
+    tokenUri,
+    fit: fits,
   };
+  agent.readiness = readinessOf(agent);
+  return agent;
 }

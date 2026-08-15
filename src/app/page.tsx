@@ -1,80 +1,54 @@
 import Link from "next/link";
-import { CATEGORIES } from "@/lib/categories";
-import { snapshotPagination } from "@/lib/fallback";
-import { listMarketplaceAgents } from "@/lib/query";
+import { DESKS } from "@/lib/categories";
+import { listAllDesks } from "@/lib/query";
 import { AgentCard } from "@/components/AgentCard";
 
 export const dynamic = "force-dynamic";
 
+const STEPS = [
+  { n: "1", t: "Land on a desk", d: "Pick one job: rebalancing, grid, yield, or health factor." },
+  { n: "2", t: "Find a live identity", d: "Every card is an ERC-8004 token on BNB Smart Chain." },
+  { n: "3", t: "Understand the record", d: "Read registration, on-chain owner, and feedback — empty stays empty." },
+  { n: "4", t: "Activate a hire", d: "Fill the mandate, mock-pay, then advance the job on My hires." },
+];
+
 export default async function HomePage() {
-  const featured = await listMarketplaceAgents({
-    includeReference: true,
-    preferLive: true,
-    hideSpam: true,
-    limit: 8,
-    page: 1,
-  });
-  const liveTotal = snapshotPagination().total;
+  const desks = await listAllDesks();
 
   return (
     <>
       <section className="hero">
         <div className="wrap">
           <div className="kicker">BNB Smart Chain · ERC-8004 · Build the Era</div>
-          <h1>Find an agent. See the record. Hire it.</h1>
+          <h1>Four jobs. Live identities. One hire path.</h1>
           <p className="lede">
-            ERA is a marketplace for agents already registered on BNB Smart Chain — not a
-            portfolio of demos. Identity comes from the ERC-8004 registry. Performance is
-            on-chain when it exists, and labeled when it does not.
+            ERA is the marketplace, not a portfolio of agents we run. You pick a job, we search the
+            BSC registry, you read the record, you activate. If you have never used Agent Studio,
+            start with a desk — there is no account wall. Home cards are the last successful live
+            capture of real token IDs; open a desk to query 8004scan now.
           </p>
           <div className="hero-actions">
-            <Link className="btn btn-gold" href="/marketplace">
-              Browse the registry
+            <Link className="btn btn-gold" href="/desks/rebalancing">
+              Start with rebalancing
             </Link>
             <Link className="btn" href="/about">
-              How data works
+              How live data works
             </Link>
-          </div>
-          <div className="stats">
-            <div className="stat">
-              <b>{liveTotal.toLocaleString()}</b>
-              <span>BSC identities in last live snapshot</span>
-            </div>
-            <div className="stat">
-              <b>{featured.source === "live" ? "Live" : "Fallback"}</b>
-              <span>Index used for this page</span>
-            </div>
-            <div className="stat">
-              <b>56</b>
-              <span>BNB Smart Chain id</span>
-            </div>
-            <div className="stat">
-              <b>Mock</b>
-              <span>x402 / escrow hire rail</span>
-            </div>
           </div>
         </div>
       </section>
 
       <section className="section">
         <div className="wrap">
-          <div className="section-head">
-            <div>
-              <div className="kicker">Categories the brief asked for</div>
-              <h2>Search by the job, not the thread.</h2>
-            </div>
-          </div>
-          <div className="grid">
-            {CATEGORIES.filter((c) =>
-              ["monitoring", "grid", "health-factor", "yield", "trading", "research", "security", "payments"].includes(
-                c.id,
-              ),
-            ).map((c) => (
-              <Link key={c.id} href={`/marketplace?category=${c.id}`} className="card">
-                <span className="badge badge-gold">{c.label}</span>
-                <h3>{c.short}</h3>
-                <p>{c.blurb}</p>
-              </Link>
+          <div className="kicker">First time here</div>
+          <h2>Land → find → understand → activate</h2>
+          <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}>
+            {STEPS.map((s) => (
+              <div key={s.n} className="card" style={{ minHeight: 0 }}>
+                <span className="badge badge-gold">{s.n}</span>
+                <h3>{s.t}</h3>
+                <p>{s.d}</p>
+              </div>
             ))}
           </div>
         </div>
@@ -84,21 +58,54 @@ export default async function HomePage() {
         <div className="wrap">
           <div className="section-head">
             <div>
-              <div className="kicker">On the floor now</div>
-              <h2>A slice of the index</h2>
+              <div className="kicker">Equal-depth desks</div>
+              <h2>The four jobs the rubric scores</h2>
             </div>
-            <Link className="btn" href="/marketplace">
-              Open full browse
-            </Link>
           </div>
-          {featured.warning && <div className="banner">{featured.warning}</div>}
           <div className="grid">
-            {featured.agents.slice(0, 8).map((agent) => (
-              <AgentCard key={agent.id} agent={agent} />
-            ))}
+            {DESKS.map((d) => {
+              const result = desks[d.id];
+              return (
+                <Link key={d.id} href={`/desks/${d.id}`} className="card">
+                  <span className="badge badge-gold">{d.label}</span>
+                  <h3>{d.short}</h3>
+                  <p>{d.blurb}</p>
+                  <div className="meta">
+                    <span>{result.agents.length} listed now</span>
+                    <span>{result.source}</span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>
+
+      {DESKS.map((d) => {
+        const result = desks[d.id];
+        return (
+          <section key={d.id} className="section">
+            <div className="wrap">
+              <div className="section-head">
+                <div>
+                  <div className="kicker">{d.label}</div>
+                  <h2>{d.short}</h2>
+                  <p className="lede">{d.youGet}</p>
+                </div>
+                <Link className="btn" href={`/desks/${d.id}`}>
+                  Open desk
+                </Link>
+              </div>
+              {result.warning && <div className="banner">{result.warning}</div>}
+              <div className="grid">
+                {result.agents.slice(0, 4).map((agent) => (
+                  <AgentCard key={agent.id} agent={agent} />
+                ))}
+              </div>
+            </div>
+          </section>
+        );
+      })}
     </>
   );
 }

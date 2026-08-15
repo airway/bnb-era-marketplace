@@ -6,6 +6,10 @@ import { money, scoreLabel, shortAddr } from "@/lib/format";
 import { sourceLabel } from "@/lib/fallback";
 import type { MarketplaceAgent } from "@/lib/types";
 
+function deskLabel(id: MarketplaceAgent["primaryCategory"]) {
+  return id === "other" ? "Unclassified" : CATEGORY_BY_ID[id].label;
+}
+
 export function AgentCard({
   agent,
   compared,
@@ -17,7 +21,8 @@ export function AgentCard({
   onCompare?: (agent: MarketplaceAgent) => void;
   onHire?: (agent: MarketplaceAgent) => void;
 }) {
-  const cat = CATEGORY_BY_ID[agent.primaryCategory];
+  const catLabel = deskLabel(agent.primaryCategory);
+  const fit = agent.fit?.find((f) => f.category === agent.primaryCategory);
   return (
     <article className="card">
       <div className="card-top">
@@ -30,7 +35,7 @@ export function AgentCard({
           )}
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <span className="badge">{cat.label}</span>
+          <span className="badge">{catLabel}</span>
           {agent.source !== "live" && <span className="badge badge-ref">{sourceLabel(agent.source)}</span>}
           {agent.x402 && <span className="badge">x402</span>}
         </div>
@@ -43,7 +48,9 @@ export function AgentCard({
       </div>
       <div className="meta">
         <span>{money(agent.hirePriceTbnb)}</span>
-        <span>score {scoreLabel(agent.trackRecord.averageScore)}</span>
+        <span>
+          fit {fit?.score ?? 0} · fb {scoreLabel(agent.trackRecord.averageScore)}
+        </span>
       </div>
       <div className="card-actions">
         <Link className="btn" href={`/agents/${agent.chainId}/${agent.tokenId}`}>

@@ -1,156 +1,122 @@
 import type { CategoryId, HireMandate } from "./types";
 
 export interface CategoryDef {
-  id: CategoryId;
+  id: Exclude<CategoryId, "other">;
   label: string;
   short: string;
   blurb: string;
+  youProvide: string;
+  youGet: string;
+  risk: string;
+  searchTerms: string[];
   keywords: string[];
+  penalties: string[];
 }
 
-export const CATEGORIES: CategoryDef[] = [
+/** Official four desks — equal product depth. */
+export const DESKS: CategoryDef[] = [
   {
-    id: "monitoring",
-    label: "Monitoring",
-    short: "Watch markets, wallets, and positions",
-    blurb: "Alerts when a wallet, pool, or price moves. No custody.",
-    keywords: [
-      "monitor",
-      "watch",
-      "alert",
-      "radar",
-      "sentinel",
-      "scan",
-      "tracker",
-      "oracle",
-      "price feed",
-      "wallet watch",
-    ],
+    id: "rebalancing",
+    label: "Rebalancing",
+    short: "Keep a position inside the band you set",
+    blurb: "Moves LP or portfolio inventory when price walks out of range. You sign; it does not hold keys.",
+    youProvide: "Pair or vault, target weights or range, max deviation.",
+    youGet: "A proposed rebalance (what to add/remove, estimated cost) against a live BSC identity.",
+    risk: "Inventory and IL. A weak registration match is labeled — do not treat it as a backtest.",
+    searchTerms: ["rebalance", "rebalancer", "lp-rebalance"],
+    keywords: ["rebalanc", "range rebalanc", "lp rebalanc", "concentrated-liquidity", "inventory", "portfolio rebalanc"],
+    penalties: ["yin yang", "metaphysics", "bort ", "yi he nexus"],
   },
   {
     id: "grid",
     label: "Grid trading",
-    short: "Range-bound automated strategies",
-    blurb: "Places buys and sells inside a band you set.",
-    keywords: ["grid", "range", "market make", "market-make", "mm bot", "spread"],
-  },
-  {
-    id: "health-factor",
-    label: "Health factor",
-    short: "Loan health and liquidation defense",
-    blurb: "Tracks LTV / health factor and acts before liquidation.",
-    keywords: [
-      "health factor",
-      "health-factor",
-      "liquidation",
-      "ltv",
-      "collateral",
-      "venus",
-      "aave",
-      "borrow",
-      "repay",
-    ],
+    short: "Buy and sell inside a range",
+    blurb: "Lays a ladder of bids and asks on a BSC pair. Paper or live, with a band you name.",
+    youProvide: "Pair, low/high, number of levels, paper vs live.",
+    youGet: "A grid plan (levels, inventory, fee estimate) from a registered agent.",
+    risk: "Range break and inventory. 'Energy grid' names are filtered out.",
+    searchTerms: ["grid trading", "grid-trading", "gridmaster", "bounded-grid"],
+    keywords: ["grid trad", "grid-trad", "bounded-grid", "gridmaster", "grid bot"],
+    penalties: ["energy grid", "landing page", "hodlai", "silicon life"],
   },
   {
     id: "yield",
-    label: "Yield",
-    short: "Move capital to where it earns",
-    blurb: "Vaults, farms, and LP rotation — including PancakeSwap.",
-    keywords: [
-      "yield",
-      "apy",
-      "apr",
-      "farm",
-      "vault",
-      "restake",
-      "pancake",
-      "liquidity",
-      "lp ",
-      "harvest",
-    ],
+    label: "Yield optimisation",
+    short: "Move idle capital to where it earns",
+    blurb: "Compares Venus / Pancake / vault APYs and recommends a rotation. No custody in this hire flow.",
+    youProvide: "Asset, venues to compare, minimum APY, risk cap.",
+    youGet: "A ranked venue list and a recommended move, tied to an ERC-8004 identity.",
+    risk: "APY is point-in-time. Optimistic-rollup name collisions are filtered.",
+    searchTerms: ["yield", "yield optimizer", "yield-optimisation", "yield compass"],
+    keywords: ["yield", "apy", "farm", "vault", "harvest", "optimis"],
+    penalties: ["optimistic rollup", "self building", "clawpump", "^hue$"],
   },
   {
-    id: "trading",
-    label: "Trading",
-    short: "Execution, DCA, and swaps",
-    blurb: "Spot, DCA, and route-aware execution on BSC.",
-    keywords: ["trad", "swap", "dca", "execution", "order", "arb", "funding"],
-  },
-  {
-    id: "research",
-    label: "Research",
-    short: "Briefs, alpha, and pool demand",
-    blurb: "Written research a human can act on.",
-    keywords: ["research", "alpha", "sentiment", "brief", "muse", "orion", "trace"],
-  },
-  {
-    id: "security",
-    label: "Security",
-    short: "Risk, phishing, and audit signals",
-    blurb: "Screens contracts and counterparties before you sign.",
-    keywords: ["security", "audit", "phish", "risk", "forge", "scan"],
-  },
-  {
-    id: "payments",
-    label: "Payments",
-    short: "x402 and agent commerce",
-    blurb: "Agents that settle over x402 / ERC-8183 rails.",
-    keywords: ["x402", "payment", "commerce", "q402", "quack"],
-  },
-  {
-    id: "other",
-    label: "Other",
-    short: "Unclassified on-chain identities",
-    blurb: "Registered on ERC-8004, category not yet inferred.",
-    keywords: [],
+    id: "health-factor",
+    label: "Health factor monitoring",
+    short: "Act before a loan is liquidated",
+    blurb: "Watches Venus / Aave-style health factor and drafts a repay or collateral add.",
+    youProvide: "Venue, account or position, health-factor floor.",
+    youGet: "Current HF (when the agent can read it) and a bounded rescue plan.",
+    risk: "Liquidation is fast. Empty on-chain feedback means you are hiring identity, not a proven track record.",
+    searchTerms: ["health factor", "lending guardian", "lending-rescue", "liquidation"],
+    keywords: ["health factor", "health-factor", "liquidation", "lending", "collateral", "venus", "aave", "repay"],
+    penalties: ["yield-farmer", "yield compass", "yield optim", "coinank", "landing page"],
   },
 ];
 
-export const CATEGORY_BY_ID = Object.fromEntries(
-  CATEGORIES.map((c) => [c.id, c]),
-) as Record<CategoryId, CategoryDef>;
+export const CATEGORIES = DESKS;
+
+export const CATEGORY_BY_ID = Object.fromEntries(DESKS.map((c) => [c.id, c])) as Record<
+  Exclude<CategoryId, "other">,
+  CategoryDef
+>;
 
 export const MANDATES: HireMandate[] = [
   {
-    id: "watch-wallet",
-    label: "Watch a wallet",
-    category: "monitoring",
-    description: "Ping on inbound/outbound transfers above a threshold for 7 days.",
-    defaultBudget: 0.02,
+    id: "rebalance-range",
+    label: "Rebalance a range / weights",
+    category: "rebalancing",
+    description: "Propose the smallest move that puts a Pancake V3 or portfolio position back in band.",
+    defaultBudget: 0.05,
+    fields: [
+      { id: "pair", label: "Pair or vault", placeholder: "WBNB/USDT V3", defaultValue: "WBNB/USDT" },
+      { id: "deviation", label: "Max deviation", placeholder: "8%", defaultValue: "8%" },
+    ],
   },
   {
     id: "grid-range",
     label: "Run a grid in range",
     category: "grid",
-    description: "Place a 12-level grid on a BSC pair you name. Paper or live.",
+    description: "Build or reject a grid under volatility, fee, and slippage bounds.",
     defaultBudget: 0.08,
+    fields: [
+      { id: "pair", label: "Pair", placeholder: "WBNB/USDT", defaultValue: "WBNB/USDT" },
+      { id: "low", label: "Range low", placeholder: "price", defaultValue: "500" },
+      { id: "high", label: "Range high", placeholder: "price", defaultValue: "700" },
+      { id: "levels", label: "Levels", placeholder: "12", defaultValue: "12" },
+    ],
+  },
+  {
+    id: "yield-rotate",
+    label: "Optimise idle yield",
+    category: "yield",
+    description: "Compare two or more BSC venues and recommend a rotation. You sign the move.",
+    defaultBudget: 0.04,
+    fields: [
+      { id: "asset", label: "Asset", placeholder: "USDT", defaultValue: "USDT" },
+      { id: "minApy", label: "Minimum APY", placeholder: "4%", defaultValue: "4%" },
+    ],
   },
   {
     id: "hf-guard",
     label: "Guard a health factor",
     category: "health-factor",
-    description: "Watch a Venus/Aave-style position and draft a repay if HF < 1.2.",
+    description: "Watch a Venus/Aave-style position and draft a repay if HF crosses your floor.",
     defaultBudget: 0.05,
-  },
-  {
-    id: "yield-rotate",
-    label: "Rotate idle yield",
-    category: "yield",
-    description: "Compare two Pancake/vault venues and recommend a move. No custody.",
-    defaultBudget: 0.04,
-  },
-  {
-    id: "swap-route",
-    label: "Quote a safe swap",
-    category: "trading",
-    description: "Return a PancakeSwap route with slippage and pool-risk notes.",
-    defaultBudget: 0.015,
-  },
-  {
-    id: "research-brief",
-    label: "Write a market brief",
-    category: "research",
-    description: "One-page brief on a token or pool, with sources.",
-    defaultBudget: 0.03,
+    fields: [
+      { id: "venue", label: "Venue", placeholder: "Venus", defaultValue: "Venus" },
+      { id: "floor", label: "HF floor", placeholder: "1.20", defaultValue: "1.20" },
+    ],
   },
 ];

@@ -1,22 +1,10 @@
-export type DataSource = "live" | "snapshot" | "reference";
+export type DataSource = "live" | "snapshot" | "chain";
 
-export type CategoryId =
-  | "monitoring"
-  | "grid"
-  | "health-factor"
-  | "yield"
-  | "trading"
-  | "research"
-  | "security"
-  | "payments"
-  | "other";
+export type CategoryId = "rebalancing" | "grid" | "yield" | "health-factor" | "other";
 
 export type ProtocolTag = "A2A" | "MCP" | "OASF" | "Web" | "x402" | "HTTP";
 
-export type TrackRecordSource =
-  | "erc-8004-reputation"
-  | "reference-estimated"
-  | "unavailable";
+export type TrackRecordSource = "erc-8004-reputation" | "unavailable";
 
 export interface AgentService {
   name: string;
@@ -31,8 +19,24 @@ export interface AgentTrackRecord {
   averageScore: number;
   validationCount: number;
   successfulValidations: number;
-  winRate?: number;
   notes: string;
+}
+
+export interface HireReadiness {
+  hasIdentity: boolean;
+  hasOwner: boolean;
+  hasWallet: boolean;
+  hasEndpoint: boolean;
+  hasX402: boolean;
+  hasFeedback: boolean;
+  hasTrust: boolean;
+  hasOnchainUri: boolean;
+}
+
+export interface FitBreakdown {
+  category: CategoryId;
+  score: number;
+  matched: string[];
 }
 
 export interface MarketplaceAgent {
@@ -64,6 +68,12 @@ export interface MarketplaceAgent {
   trackRecord: AgentTrackRecord;
   explorerUrl: string;
   scanUrl: string;
+  tokenUri?: string | null;
+  chainOwner?: string | null;
+  chainReadAt?: string | null;
+  chainReadError?: string | null;
+  fit?: FitBreakdown[];
+  readiness?: HireReadiness;
 }
 
 export interface AgentListResult {
@@ -76,6 +86,7 @@ export interface AgentListResult {
   liveAttempted: boolean;
   warning?: string;
   capturedAt?: string;
+  deskCounts?: Partial<Record<CategoryId, number>>;
 }
 
 export interface HireMandate {
@@ -84,6 +95,7 @@ export interface HireMandate {
   category: CategoryId;
   description: string;
   defaultBudget: number;
+  fields: { id: string; label: string; placeholder: string; defaultValue: string }[];
 }
 
 export type HireStatus = "quoted" | "funded" | "working" | "submitted" | "settled";
@@ -103,6 +115,7 @@ export interface HireRecord {
   status: HireStatus;
   createdAt: string;
   note: string;
+  inputs?: Record<string, string>;
 }
 
 export interface HireRequest {
@@ -111,4 +124,5 @@ export interface HireRequest {
   budgetTbnb: number;
   paymentRail: PaymentRail;
   payer?: string;
+  inputs?: Record<string, string>;
 }

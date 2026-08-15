@@ -4,18 +4,26 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AgentCard } from "./AgentCard";
 import { HireDialog } from "./HireDialog";
-import { CATEGORIES } from "@/lib/categories";
+import { DESKS } from "@/lib/categories";
 import { getCompareIds, rememberAgents, toggleCompare } from "@/lib/client-store";
 import type { AgentListResult, CategoryId, HireRecord, MarketplaceAgent } from "@/lib/types";
 
-export function MarketplaceClient({ initial }: { initial?: AgentListResult }) {
+export function MarketplaceClient({
+  initial,
+  lockedCategory,
+}: {
+  initial?: AgentListResult;
+  lockedCategory?: CategoryId;
+}) {
   const params = useSearchParams();
   const router = useRouter();
   const [q, setQ] = useState(params.get("q") ?? "");
-  const [category, setCategory] = useState<CategoryId | "all">((params.get("category") as CategoryId) || "all");
+  const [category, setCategory] = useState<CategoryId | "all">(
+    lockedCategory || (params.get("category") as CategoryId) || "all",
+  );
   const [x402, setX402] = useState(params.get("x402") === "1");
   const [hideSpam, setHideSpam] = useState(params.get("spam") !== "0");
-  const [sort, setSort] = useState(params.get("sort") ?? "newest");
+  const [sort, setSort] = useState(params.get("sort") ?? (lockedCategory ? "fit" : "newest"));
   const [data, setData] = useState<AgentListResult | null>(initial ?? null);
   const [loading, setLoading] = useState(!initial);
   const [compare, setCompare] = useState<string[]>([]);
@@ -27,6 +35,7 @@ export function MarketplaceClient({ initial }: { initial?: AgentListResult }) {
   }, []);
 
   useEffect(() => {
+    if (lockedCategory) return;
     const next = new URLSearchParams();
     if (q) next.set("q", q);
     if (category !== "all") next.set("category", category);
@@ -34,18 +43,17 @@ export function MarketplaceClient({ initial }: { initial?: AgentListResult }) {
     if (!hideSpam) next.set("spam", "0");
     if (sort !== "newest") next.set("sort", sort);
     router.replace(`/marketplace?${next.toString()}`, { scroll: false });
-  }, [q, category, x402, hideSpam, sort, router]);
+  }, [q, category, x402, hideSpam, sort, router, lockedCategory]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     const qs = new URLSearchParams({
       q,
-      category,
+      category: lockedCategory || category,
       x402: x402 ? "1" : "0",
       hideSpam: hideSpam ? "1" : "0",
       sort,
-      includeReference: "1",
     });
     fetch(`/api/agents?${qs}`)
       .then((r) => r.json())
@@ -60,7 +68,7 @@ export function MarketplaceClient({ initial }: { initial?: AgentListResult }) {
     return () => {
       cancelled = true;
     };
-  }, [q, category, x402, hideSpam, sort]);
+  }, [q, category, x402, hideSpam, sort, lockedCategory]);
 
   const agents = data?.agents ?? [];
   const comparedAgents = useMemo(
@@ -73,26 +81,28 @@ export function MarketplaceClient({ initial }: { initial?: AgentListResult }) {
       {data?.warning && <div className="banner">{data.warning}</div>}
       {!data?.warning && data?.source === "live" && (
         <div className="banner">
-          Live 8004scan on BNB Smart Chain (chain 56). Reference cards are labeled and exist so
-          empty categories still have a hire path.
+          Live 8004scan on BNB Smart Chain. Fit score is inferred from the registration text, then
+          you can confirm on-chain <code>tokenURI</code> on the identity page.
         </div>
       )}
 
-      <div className="pills" style={{ marginBottom: 16 }}>
-        <button className="pill" data-on={category === "all"} onClick={() => setCategory("all")}>
-          All
-        </button>
-        {CATEGORIES.filter((c) => c.id !== "other").map((c) => (
-          <button
-            key={c.id}
-            className="pill"
-            data-on={category === c.id}
-            onClick={() => setCategory(c.id)}
-          >
-            {c.label}
+      {!lockedCategory && (
+        <div className="pills" style={{ marginBottom: 16 }}>
+          <button className="pill" data-on={category === "all"} onClick={() => setCategory("all")}>
+            All
           </button>
-        ))}
-      </div>
+          {DESKS.map((c) => (
+            <button
+              key={c.id}
+              className="pill"
+              data-on={category === c.id}
+              onClick={() => setCategory(c.id)}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="filters">
         <input
@@ -102,8 +112,9 @@ export function MarketplaceClient({ initial }: { initial?: AgentListResult }) {
           onChange={(e) => setQ(e.target.value)}
         />
         <select className="search" value={sort} onChange={(e) => setSort(e.target.value)}>
+          <option value="fit">Fit to desk</option>
           <option value="newest">Newest</option>
-          <option value="score">Track record</option>
+          <option value="score">On-chain feedback</option>
           <option value="price">Hire price</option>
           <option value="name">Name</option>
         </select>
@@ -115,9 +126,12 @@ export function MarketplaceClient({ initial }: { initial?: AgentListResult }) {
         </button>
       </div>
 
-      {loading && <p className="empty">Loading the index…</p>}
+      {loading && <p className="empty">Searching the live index…</p>}
       {!loading && agents.length === 0 && (
-        <p className="empty">No agents match. Clear filters or open a category pill.</p>
+        <p className="empty">
+          No live identities matched this filter. Open another desk or clear search — do not invent
+          an agent.
+        </p>
       )}
 
       <div className="grid">
@@ -135,7 +149,7 @@ export function MarketplaceClient({ initial }: { initial?: AgentListResult }) {
       {compare.length > 0 && (
         <div className="compare-bar">
           <div>
-            {compare.length} selected for compare
+            {compare.length} selected
             {comparedAgents.length > 0 && (
               <span style={{ color: "var(--muted)" }}>
                 {" "}
@@ -150,13 +164,7 @@ export function MarketplaceClient({ initial }: { initial?: AgentListResult }) {
       )}
 
       {hiring && !hired && (
-        <HireDialog
-          agent={hiring}
-          onClose={() => setHiring(null)}
-          onHired={(h) => {
-            setHired(h);
-          }}
-        />
+        <HireDialog agent={hiring} onClose={() => setHiring(null)} onHired={setHired} />
       )}
       {hired && (
         <div className="modal-back">

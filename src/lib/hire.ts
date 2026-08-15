@@ -1,5 +1,5 @@
 import { MANDATES } from "./categories";
-import { allFallbackAgents } from "./fallback";
+import { findCoverageAgent } from "./fallback";
 import { getMarketplaceAgent } from "./query";
 import type { HireRecord, HireRequest, HireStatus } from "./types";
 
@@ -27,10 +27,12 @@ export async function createHire(req: HireRequest): Promise<HireRecord> {
     throw new Error("Unsupported payment rail");
   }
 
-  const local = allFallbackAgents().find((a) => a.id === req.agentId || a.tokenId === req.agentId);
+  const local = findCoverageAgent(req.agentId);
   const tokenId = req.agentId.includes(":") ? req.agentId.split(":").pop()! : req.agentId;
-  const chainGuess = Number(req.agentId.split(":")[0]) || 56;
-  const agent = local ?? (await getMarketplaceAgent(Number.isFinite(chainGuess) ? chainGuess : 56, tokenId)).agent;
+  const chainGuess = Number(req.agentId.split(":")[0]);
+  const agent =
+    local ??
+    (await getMarketplaceAgent(Number.isFinite(chainGuess) && chainGuess > 0 ? chainGuess : 56, tokenId)).agent;
 
   const record: HireRecord = {
     hireId: hireId(),
@@ -45,10 +47,11 @@ export async function createHire(req: HireRequest): Promise<HireRecord> {
     payer: req.payer?.trim() || "0xDEMO000000000000000000000000000000000001",
     status: req.paymentRail === "mock-x402" ? "funded" : "quoted",
     createdAt: new Date().toISOString(),
+    inputs: req.inputs,
     note:
       req.paymentRail === "mock-x402"
-        ? "Mock x402 payment accepted. No on-chain transfer. Job marked funded so you can walk the hire flow."
-        : "Mock ERC-8183-style escrow opened. No testnet funds moved. Advance the status from My hires.",
+        ? "Mock x402 accepted. No chain transfer. Job marked funded so you can walk activate → settle."
+        : "Mock ERC-8183-style escrow opened. No testnet funds moved.",
   };
   hires.set(record.hireId, record);
   return record;
