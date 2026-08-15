@@ -1,7 +1,9 @@
 import { Suspense } from "react";
 import { MarketplaceClient } from "@/components/MarketplaceClient";
+import { listMarketplaceAgents } from "@/lib/query";
 
-export default function MarketplacePage() {
+export default async function MarketplacePage() {
+  const initial = await listMarketplaceAgents({ limit: 40, preferLive: true });
   return (
     <section className="section">
       <div className="wrap">
@@ -12,7 +14,7 @@ export default function MarketplacePage() {
           Agent Studio — each desk has the same hire path.
         </p>
         <Suspense fallback={<p className="empty">Loading marketplace…</p>}>
-          <MarketplaceClient />
+          <MarketplaceClient initial={initial} />
         </Suspense>
       </div>
     </section>

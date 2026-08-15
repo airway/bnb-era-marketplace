@@ -5,17 +5,34 @@ import { useSearchParams } from "next/navigation";
 import { getCompareIds, recallAgent } from "@/lib/client-store";
 import { money, scoreLabel, shortAddr } from "@/lib/format";
 import { sourceLabel } from "@/lib/fallback";
+import { normalizeScanAgent, type ScanAgentRaw } from "@/lib/normalize";
 import type { MarketplaceAgent } from "@/lib/types";
 
 async function loadOne(id: string): Promise<MarketplaceAgent | null> {
   const cached = recallAgent(id);
   if (cached) return cached;
   const token = id.includes(":") ? id.split(":").pop()! : id;
-  const chain = id.startsWith("56:") || id.startsWith("ref") ? 56 : 56;
-  const res = await fetch(`/api/agents/${chain}/${encodeURIComponent(token)}`);
-  if (!res.ok) return null;
-  const body = await res.json();
-  return body.agent as MarketplaceAgent;
+  const chain = 56;
+  if (process.env.NEXT_PUBLIC_STATIC !== "1") {
+    try {
+      const res = await fetch(`/api/agents/${chain}/${encodeURIComponent(token)}`);
+      if (res.ok) {
+        const body = (await res.json()) as { agent?: MarketplaceAgent };
+        if (body.agent) return body.agent;
+      }
+    } catch {
+      /* fall through to 8004scan */
+    }
+  }
+  try {
+    const res = await fetch(`https://8004scan.io/api/v1/public/agents/${chain}/${encodeURIComponent(token)}`);
+    if (!res.ok) return null;
+    const body = (await res.json()) as { success?: boolean; data?: ScanAgentRaw };
+    if (body.data) return normalizeScanAgent(body.data, "live");
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 export function CompareClient() {

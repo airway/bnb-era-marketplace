@@ -12,7 +12,7 @@ A marketplace for **ERC-8004 agents already live on BNB Smart Chain**. Not a por
 
 Launch Pad: republish the Worker `https://bnb-era-marketplace.iceline.workers.dev` from `cursor/bnb-era-marketplace-c781` with `npm run deploy` (OpenNext + `wrangler deploy` using `wrangler.jsonc`). This environment cannot write the iceline account.
 
-GitHub Pages is static. Browser A2A for `#265375` goes through the allowlisted quote proxy `https://era-a2a-proxy.sedate-socks.workers.dev/api/a2a` (same route exists on the Worker after republish). The proxy only forwards the three live nip.io operators.
+GitHub Pages is static and has no `/api/a2a`. Browser A2A for `#265375` posts to the allowlisted Worker we control: `https://era-a2a-proxy.splendid-entree.workers.dev/api/a2a`. The proxy only forwards the three live nip.io operators. It does not fall through to a naked operator POST (CORS fail) and does not call same-origin `/api/a2a`.
 
 Hire rails: `POST /api/hire` accepts `paymentRail=x402` (on-chain ERC-20 transfer from a live HTTP 402 or A2A price) and `erc-8183` (AgenticCommerce `fund()`). Mocks stay rejected. Status is not funded until the on-chain settle confirms.
 

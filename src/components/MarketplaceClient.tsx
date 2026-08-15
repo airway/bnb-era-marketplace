@@ -47,6 +47,14 @@ export function MarketplaceClient({
 
   useEffect(() => {
     let cancelled = false;
+    if (process.env.NEXT_PUBLIC_STATIC === "1") {
+      if (initial) {
+        setData(initial);
+        rememberAgents(initial.agents);
+      }
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const qs = new URLSearchParams({
       q,
@@ -79,7 +87,7 @@ export function MarketplaceClient({
     return () => {
       cancelled = true;
     };
-  }, [q, category, x402, hideSpam, sort, lockedCategory]);
+  }, [q, category, x402, hideSpam, sort, lockedCategory, initial]);
 
   const agents = data?.agents ?? [];
   const comparedAgents = useMemo(

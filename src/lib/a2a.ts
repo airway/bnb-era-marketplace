@@ -12,9 +12,13 @@ async function postA2A(a2aUrl: string, payload: unknown, signal: AbortSignal): P
       cache: "no-store" as RequestCache,
     });
   if (typeof window === "undefined") return direct();
+  const staticPages = process.env.NEXT_PUBLIC_STATIC === "1";
+  const errors: string[] = [];
   for (const base of a2aProxyBases()) {
+    if (staticPages && !base) continue;
+    const url = base ? `${base}/api/a2a` : "/api/a2a";
     try {
-      const res = await fetch(base ? `${base}/api/a2a` : "/api/a2a", {
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ a2aUrl, payload }),
@@ -22,9 +26,15 @@ async function postA2A(a2aUrl: string, payload: unknown, signal: AbortSignal): P
         cache: "no-store",
       });
       if (res.ok) return res;
-    } catch {
-      /* try the next base, then direct */
+      errors.push(`${url} HTTP ${res.status}`);
+    } catch (err) {
+      errors.push(`${url} ${err instanceof Error ? err.message : "fetch failed"}`);
     }
+  }
+  if (staticPages) {
+    throw new Error(
+      `Quote proxy failed (${errors.join("; ") || "no proxy URL"}). This static host cannot POST to the operator.`,
+    );
   }
   return direct();
 }

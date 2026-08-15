@@ -17,20 +17,28 @@ export function isAllowedA2AUrl(url: string): boolean {
   }
 }
 
-/** Pages-safe quote proxy. Same-origin /api/a2a works on the Worker after republish. */
-export const PAGES_A2A_PROXY = "https://era-a2a-proxy.sedate-socks.workers.dev";
+export function isStaticPages(): boolean {
+  return process.env.NEXT_PUBLIC_STATIC === "1";
+}
+
+/**
+ * Allowlisted A2A quote proxy we control (temporary CF account).
+ * GitHub Pages has no /api/a2a — do not use same-origin there.
+ * sedate-socks.workers.dev is gone; do not list it.
+ */
+export const PAGES_A2A_PROXY = "https://era-a2a-proxy.splendid-entree.workers.dev";
 
 export function a2aProxyBases(): string[] {
-  const raw = [
-    "",
-    process.env.NEXT_PUBLIC_API_BASE ?? "",
-    PAGES_A2A_PROXY,
-    "https://bnb-era-marketplace.iceline.workers.dev",
-  ];
+  const configured = (process.env.NEXT_PUBLIC_API_BASE ?? "").replace(/\/$/, "");
+  if (isStaticPages()) {
+    const bases = [PAGES_A2A_PROXY, configured];
+    return [...new Set(bases.filter((b) => b && !b.includes("sedate-socks")))];
+  }
+  const raw = ["", configured, PAGES_A2A_PROXY];
   const out: string[] = [];
   for (const b of raw) {
-    const n = b.replace(/\/$/, "");
-    if (!out.includes(n)) out.push(n);
+    if (b.includes("sedate-socks")) continue;
+    if (!out.includes(b)) out.push(b);
   }
   return out;
 }

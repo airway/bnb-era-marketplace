@@ -38,7 +38,7 @@ PY
 
 STATIC_EXPORT=1 NEXT_PUBLIC_STATIC=1 \
   NEXT_PUBLIC_BASE_PATH="${NEXT_PUBLIC_BASE_PATH:-}" \
-  NEXT_PUBLIC_API_BASE="${NEXT_PUBLIC_API_BASE:-https://era-a2a-proxy.sedate-socks.workers.dev}" \
+  NEXT_PUBLIC_API_BASE="${NEXT_PUBLIC_API_BASE:-https://increase-quizzes-warrant-modem.trycloudflare.com}" \
   npm run build
 
 if [[ -f public/_headers ]]; then
