@@ -22,12 +22,16 @@ export const OPERATOR_BY_TOKEN: Record<
   },
 };
 
+/** First card on each desk must be a hireable identity with a real A2A URL — not Agent Studio /launch stubs. */
 export const FEATURED_BY_DESK: Record<Exclude<CategoryId, "other">, string[]> = {
-  rebalancing: ["265375", "266231"],
-  grid: ["267697", "266234"],
-  yield: ["265876", "267698", "266232"],
-  "health-factor": ["266933", "266229", "259573"],
+  rebalancing: ["265375"],
+  grid: ["266234"],
+  yield: ["265876"],
+  "health-factor": ["266933"],
 };
+
+/** Agent Studio /launch listings — real token IDs, no A2A, not featured. */
+export const STUDIO_STUBS = new Set(["267697", "267698"]);
 
 export function operatorFor(tokenId: string) {
   return OPERATOR_BY_TOKEN[tokenId];

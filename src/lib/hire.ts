@@ -1,7 +1,7 @@
 import { negotiateA2A, notifyFunded, mandateTask } from "./a2a";
 import { MANDATES } from "./categories";
 import { COMMERCE, PAYMENT_TOKEN } from "./contracts";
-import { buildApproveTx, buildCreateJobTx } from "./erc8183";
+import { buildCreateJobTx } from "./erc8183";
 import { findCoverageAgent } from "./fallback";
 import { getMarketplaceAgent } from "./query";
 import { discoverA2A } from "./strategy";
@@ -95,10 +95,9 @@ export async function createHire(req: HireRequest): Promise<HireRecord> {
           quote,
         }),
       );
-      if (quote.priceRaw) txs.push(buildApproveTx(agent.chainId, quote.priceRaw));
     }
     note = quote.accepted
-      ? `Live A2A negotiate succeeded. Sign createJob on ${quote.verifyingContract} — not a localStorage clock.`
+      ? `Live A2A negotiate succeeded. Start hire to createJob → registerJob → setBudget → approve → fund on ${quote.verifyingContract}.`
       : quote.error
         ? `A2A negotiate did not complete (${quote.error}). Unsigned createJob is still the official ERC-8183 path if a provider address exists.`
         : "Quote returned without acceptance. Read the payload before signing.";
@@ -141,12 +140,43 @@ export async function confirmHire(opts: {
   rec.createTxHash = opts.createTxHash;
   rec.jobId = opts.jobId ?? rec.jobId ?? null;
   if (opts.payer) rec.payer = opts.payer;
+  rec.status = "created";
+  rec.note = rec.jobId
+    ? `createJob confirmed. On-chain job ${rec.jobId}. Not funded until fund() confirms.`
+    : `createJob submitted ${opts.createTxHash}. Waiting for JobCreated so we can fund.`;
+  hires.set(rec.hireId, rec);
+  return rec;
+}
+
+export async function fundHire(opts: {
+  hireId?: string;
+  hire?: HireRecord;
+  jobId: string;
+  fundTxHash: string;
+  registerTxHash?: string;
+  budgetTxHash?: string;
+  approveTxHash?: string;
+  payer?: string;
+}): Promise<HireRecord> {
+  const rec = opts.hire ?? (opts.hireId ? hires.get(opts.hireId) : undefined);
+  if (!rec) throw new Error("Hire not found — pass the hire body if the server restarted");
+  if (!opts.fundTxHash) throw new Error("fundTxHash required — a hire is not funded until fund() lands");
+  if (!opts.jobId) throw new Error("jobId required");
+  rec.jobId = opts.jobId;
+  rec.fundTxHash = opts.fundTxHash;
+  if (opts.registerTxHash) rec.registerTxHash = opts.registerTxHash;
+  if (opts.budgetTxHash) rec.budgetTxHash = opts.budgetTxHash;
+  if (opts.approveTxHash) rec.approveTxHash = opts.approveTxHash;
+  if (opts.payer) rec.payer = opts.payer;
   rec.status = "funded";
-  rec.note = `createJob submitted ${opts.createTxHash}. Waiting for fund + notify_funded.`;
-  if (rec.jobId && rec.quote?.a2aUrl) {
-    rec.notifyResult = await notifyFunded(rec.quote.a2aUrl, rec.jobId);
+  rec.note = `fund() confirmed ${opts.fundTxHash} for job ${opts.jobId}.`;
+  const url = rec.quote?.a2aUrl;
+  if (url) {
+    rec.notifyResult = await notifyFunded(url, opts.jobId);
     rec.status = "working";
-    rec.note = `Funded job ${rec.jobId}. notify_funded sent to the live A2A endpoint.`;
+    rec.note = `Funded job ${opts.jobId}. notify_funded sent to the live A2A endpoint.`;
+  } else {
+    rec.note = `Funded job ${opts.jobId} on-chain. No A2A URL — the provider must notice the FUNDED job.`;
   }
   hires.set(rec.hireId, rec);
   return rec;

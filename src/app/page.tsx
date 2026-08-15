@@ -7,7 +7,7 @@ const STEPS = [
   { n: "1", t: "Land on a desk", d: "Pick one job: rebalancing, grid, yield, or health factor." },
   { n: "2", t: "Find a live identity", d: "Every card is an ERC-8004 token on BNB Smart Chain." },
   { n: "3", t: "Understand the record", d: "Read registration, on-chain owner, and feedback — empty stays empty." },
-  { n: "4", t: "Activate a hire", d: "Live A2A quote, then you sign ERC-8183 createJob on BNB Smart Chain." },
+  { n: "4", t: "Activate a hire", d: "Live A2A quote, then you sign createJob → registerJob → setBudget → approve → fund." },
 ];
 
 export default async function HomePage() {

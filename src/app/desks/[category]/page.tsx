@@ -49,7 +49,7 @@ export default async function DeskPage({
             <h3>Activate</h3>
             <p>{mandate?.description}</p>
             <p className="mono" style={{ color: "var(--muted)", fontSize: 13 }}>
-              Mandate {mandate?.id} · live A2A quote, then ERC-8183 createJob
+              Mandate {mandate?.id} · live A2A quote, then createJob → fund()
             </p>
           </div>
         </div>

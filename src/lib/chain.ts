@@ -82,6 +82,45 @@ export async function readIdentityOnchain(chainId: number, tokenId: string): Pro
   }
 }
 
+export async function fetchTxReceipt(txHash: string): Promise<{
+  status: string | null;
+  logs: { address?: string; topics?: string[] }[];
+} | null> {
+  let last = "no rpc";
+  for (const url of RPCS) {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 8000);
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "eth_getTransactionReceipt",
+          params: [txHash],
+        }),
+        signal: ctrl.signal,
+        cache: "no-store" as RequestCache,
+      });
+      clearTimeout(t);
+      const body = (await res.json()) as {
+        result?: { status?: string; logs?: { address?: string; topics?: string[] }[] } | null;
+        error?: { message?: string };
+      };
+      if (body.error) {
+        last = body.error.message ?? "rpc error";
+        continue;
+      }
+      if (!body.result) return null;
+      return { status: body.result.status ?? null, logs: body.result.logs ?? [] };
+    } catch (err) {
+      last = err instanceof Error ? err.message : "rpc failed";
+    }
+  }
+  throw new Error(last);
+}
+
 export async function resolveRegistration(uri: string | null): Promise<Record<string, unknown> | null> {
   if (!uri) return null;
   try {

@@ -49,8 +49,13 @@ export function HiresClient() {
             <td>{shortAddr(h.payer)}</td>
             <td>{h.status}</td>
             <td>
-              {h.createTxHash ? (
-                <a href={explorerTx(h.chainId, h.createTxHash)}>{shortAddr(h.createTxHash)}</a>
+              {h.fundTxHash ? (
+                <a href={explorerTx(h.chainId, h.fundTxHash)}>fund {shortAddr(h.fundTxHash)}</a>
+              ) : h.createTxHash ? (
+                <a href={explorerTx(h.chainId, h.createTxHash)}>
+                  createJob {shortAddr(h.createTxHash)}
+                  {h.jobId ? ` · job ${h.jobId}` : ""} — not funded
+                </a>
               ) : (
                 "quote only"
               )}

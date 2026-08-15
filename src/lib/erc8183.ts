@@ -1,11 +1,17 @@
-import { encodeFunctionData, erc20Abi } from "viem";
+import { encodeFunctionData, erc20Abi, keccak256, toBytes } from "viem";
 import {
   COMMERCE,
   EVALUATOR_ROUTER,
+  OPTIMISTIC_POLICY,
   PAYMENT_TOKEN,
   ZERO_ADDRESS,
 } from "./contracts";
 import type { CommerceQuote, UnsignedTx } from "./types";
+
+/** keccak256("JobCreated(uint256,address,address,address,uint256,address)") */
+export const JOB_CREATED_TOPIC = keccak256(
+  toBytes("JobCreated(uint256,address,address,address,uint256,address)"),
+);
 
 const CREATE_JOB_ABI = [
   {
@@ -46,6 +52,19 @@ const FUND_ABI = [
       { name: "jobId", type: "uint256" },
       { name: "expectedBudget", type: "uint256" },
       { name: "optParams", type: "bytes" },
+    ],
+    outputs: [],
+  },
+] as const;
+
+const REGISTER_JOB_ABI = [
+  {
+    type: "function",
+    name: "registerJob",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "jobId", type: "uint256" },
+      { name: "policy", type: "address" },
     ],
     outputs: [],
   },
@@ -120,6 +139,53 @@ export function buildFundTx(chainId: number, jobId: string, amountRaw: string): 
     chainId,
     label: "ERC-8183 fund",
   };
+}
+
+export function buildRegisterJobTx(chainId: number, jobId: string): UnsignedTx {
+  const router = EVALUATOR_ROUTER[chainId] || EVALUATOR_ROUTER[56];
+  const policy = OPTIMISTIC_POLICY[chainId] || OPTIMISTIC_POLICY[56];
+  const data = encodeFunctionData({
+    abi: REGISTER_JOB_ABI,
+    functionName: "registerJob",
+    args: [BigInt(jobId), policy],
+  });
+  return {
+    to: router,
+    data,
+    value: "0x0",
+    chainId,
+    label: "ERC-8183 registerJob",
+  };
+}
+
+/** Official BNBAgent sequence after createJob: registerJob → setBudget → approve → fund. */
+export function buildFundSequence(chainId: number, jobId: string, amountRaw: string): UnsignedTx[] {
+  return [
+    buildRegisterJobTx(chainId, jobId),
+    buildSetBudgetTx(chainId, jobId, amountRaw),
+    buildApproveTx(chainId, amountRaw),
+    buildFundTx(chainId, jobId, amountRaw),
+  ];
+}
+
+export function parseJobCreatedId(
+  logs: { address?: string; topics?: readonly string[] | string[] }[] | undefined,
+  commerce?: string,
+): string | null {
+  if (!logs?.length) return null;
+  for (const log of logs) {
+    const topic0 = log.topics?.[0];
+    if (!topic0 || topic0.toLowerCase() !== JOB_CREATED_TOPIC.toLowerCase()) continue;
+    if (commerce && log.address && log.address.toLowerCase() !== commerce.toLowerCase()) continue;
+    const jobTopic = log.topics?.[1];
+    if (!jobTopic) continue;
+    try {
+      return BigInt(jobTopic).toString();
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 export function formatU(raw: string | null | undefined): string {

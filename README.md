@@ -8,15 +8,13 @@ A marketplace for **ERC-8004 agents already live on BNB Smart Chain**. Not a por
 
 ## Public URL
 
-**https://airway.github.io/bnb-era-marketplace/**
+**https://bnb-era-marketplace.iceline.workers.dev**
 
-GitHub Pages (no captcha). Built from this branch; each push rebuilds with a fresh 8004scan + operator `/status` capture.
-
-Cloudflare Workers preview (OpenNext): `https://bnb-era-marketplace.sedate-socks.workers.dev` — temporary account **Sedate Socks**. That hostname currently serves Cloudflare’s bot interstitial, so it is not the judge URL. Owner can claim it (60 minutes from deploy) at the claim link in the PR if they want a Workers origin later.
+Cloudflare Worker (OpenNext) on this branch. No account wall. GitHub Pages (`https://airway.github.io/bnb-era-marketplace/`) is not enabled on the repo, so it is not the judge URL.
 
 ## Rubric coverage
 
-1. **Functionality** — Land on `/` → pick one of four desks → read identity + live strategy + hire checklist → request an A2A quote → sign ERC-8183 `createJob`. No account, captcha, or X/Discord.
+1. **Functionality** — Land on `/` → pick one of four desks → read identity + live strategy + hire checklist → request an A2A quote → **Start hire** signs `createJob` → `registerJob` → `setBudget` → approve U → `fund()`. Job id is read from `JobCreated`. Status is not `funded` until `fund()` confirms. No account, captcha, or X/Discord.
 2. **Data quality** — Live 8004scan search + BSC `tokenURI` / `ownerOf` on `0x8004A169…a432`. Operator `/status`, `/strategy`, `/performance` when the registration publishes them. Empty feedback stays empty. Fallback is a dated snapshot of **the same real token IDs**.
 3. **Agent diversity** — Four equal desks: **Rebalancing** (LP ranges / auto-reset), **Grid trading**, **Yield optimisation**, **Health factor monitoring**.
 
@@ -24,10 +22,10 @@ Cloudflare Workers preview (OpenNext): `https://bnb-era-marketplace.sedate-socks
 
 1. `/` — four desks.
 2. `/desks/rebalancing` — **BNB LP Range Rebalancer** `#265375` (live Pancake V3 range, APR, last reset).
-3. `/desks/grid` — **GridMaster Ops** `#267697` / **positioncrew-bounded-grid** `#266234`. If the operator has no `/status`, the card says so.
-4. `/desks/yield` — **BNB Yield Optimizer** `#265876` (identity is live; operator host was HTTP 502 when probed — we do not invent APR).
+3. `/desks/grid` — **positioncrew-bounded-grid** `#266234` (real grid identity). Agent Studio `#267697` is filtered — it is a `/launch` stub with no A2A. Registration A2A is a Termix `{agentId}` placeholder; the card says so.
+4. `/desks/yield` — **BNB Yield Optimizer** `#265876` (identity + A2A URL are live; operator host was HTTP 502 when probed — we do not invent APR). Agent Studio `#267698` is filtered.
 5. `/desks/health-factor` — **BNB Lending Guardian** `#266933` (live Venus HF / thresholds; HF unpublished stays unpublished).
-6. Identity → **Request live quote** → wallet **Sign createJob** on AgenticCommerce `0xEa4DAa3100A767e86FDed867729ae7446476EBA6` (U token `0xcE24439F2D9C6a2289F741120FE202248B666666`). Then `notify_funded` with the on-chain job id.
+6. Identity → **Start hire** → wallet signs createJob → registerJob → setBudget → approve U → fund() on AgenticCommerce `0xEa4DAa3100A767e86FDed867729ae7446476EBA6` (U token `0xcE24439F2D9C6a2289F741120FE202248B666666`). `notify_funded` runs after fund() with the JobCreated id.
 
 ## Run
 
@@ -57,7 +55,7 @@ Optional: `BSC_RPC_URL` (public dataseed is the default). No API keys required. 
 
 ## Stack
 
-Next.js 15. Hire rail is ERC-8183 (BNBAgent / Pieverse kernel) plus optional live x402 probe. Mock x402 / escrow clock removed.
+Next.js 15. Hire rail is ERC-8183 (BNBAgent / Pieverse kernel) plus optional live x402 probe. Mock x402 / escrow clock removed. A hire is not labelled funded until `fund()` confirms on-chain.
 
 ## License
 

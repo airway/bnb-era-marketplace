@@ -118,7 +118,7 @@ export interface HireMandate {
   fields: { id: string; label: string; placeholder: string; defaultValue: string }[];
 }
 
-export type HireStatus = "quoted" | "funded" | "working" | "submitted" | "settled" | "failed";
+export type HireStatus = "quoted" | "created" | "funded" | "working" | "submitted" | "settled" | "failed";
 export type PaymentRail = "erc-8183" | "x402-probe";
 
 export interface UnsignedTx {
@@ -166,6 +166,9 @@ export interface HireRecord {
   quote?: CommerceQuote;
   txs?: UnsignedTx[];
   createTxHash?: string | null;
+  registerTxHash?: string | null;
+  budgetTxHash?: string | null;
+  approveTxHash?: string | null;
   fundTxHash?: string | null;
   jobId?: string | null;
   notifyResult?: string | null;

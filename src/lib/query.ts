@@ -121,13 +121,16 @@ export async function listMarketplaceAgents(q: ListQuery): Promise<AgentListResu
   agents = agents.map(decorate).filter((a) => !isCloneNoise(a));
 
   if (category && category !== "other") {
-    const featured = new Set(FEATURED_BY_DESK[category] ?? []);
-    agents = [...agents].sort((a, b) => {
-      const af = featured.has(a.tokenId) ? 1 : 0;
-      const bf = featured.has(b.tokenId) ? 1 : 0;
-      return bf - af || sortByLiveSignal(a, b);
-    });
-    const toProbe = agents.filter((a) => featured.has(a.tokenId) || a.a2aUrl).slice(0, 4);
+    const featuredOrder = FEATURED_BY_DESK[category] ?? [];
+    const featured = new Set(featuredOrder);
+    const rank = (a: MarketplaceAgent) => {
+      const i = featuredOrder.indexOf(a.tokenId);
+      if (i >= 0) return i;
+      if (a.a2aUrl) return 50;
+      return 100;
+    };
+    agents = [...agents].sort((a, b) => rank(a) - rank(b) || sortByLiveSignal(a, b));
+    const toProbe = agents.filter((a) => featured.has(a.tokenId) || Boolean(a.a2aUrl)).slice(0, 4);
     const probed = await Promise.all(
       toProbe.map(async (a) => overlayTrackRecord({ ...a, strategy: await probeStrategy(a) })),
     );
@@ -135,7 +138,21 @@ export async function listMarketplaceAgents(q: ListQuery): Promise<AgentListResu
     agents = agents.map((a) => byId.get(a.tokenId) ?? a);
   }
 
-  let filtered = sortAgents(agents.filter((a) => matchesQuery(a, q)), q.sort ?? (category ? "fit" : "newest"), q.category);
+  let filtered = sortAgents(
+    agents.filter((a) => matchesQuery(a, q)),
+    q.sort ?? (category ? "fit" : "newest"),
+    q.category,
+  );
+  if (category && category !== "other") {
+    const featuredOrder = FEATURED_BY_DESK[category] ?? [];
+    const rank = (a: MarketplaceAgent) => {
+      const i = featuredOrder.indexOf(a.tokenId);
+      if (i >= 0) return i;
+      if (a.a2aUrl) return 50;
+      return 100;
+    };
+    filtered = [...filtered].sort((a, b) => rank(a) - rank(b) || sortByLiveSignal(a, b));
+  }
   const total = filtered.length;
   const start = (page - 1) * limit;
   filtered = filtered.slice(start, start + limit);

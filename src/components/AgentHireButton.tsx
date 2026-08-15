@@ -13,7 +13,15 @@ export function AgentHireButton({ agent }: { agent: MarketplaceAgent }) {
       <button className="btn btn-gold" style={{ width: "100%", margin: "8px 0" }} onClick={() => setOpen(true)}>
         Start hire
       </button>
-      {open && !hire && <HireDialog agent={agent} onClose={() => setOpen(false)} onHired={setHire} />}
+      {open && (
+        <HireDialog
+          agent={agent}
+          onClose={() => setOpen(false)}
+          onHired={(h) => {
+            setHire(h);
+          }}
+        />
+      )}
       {hire && (
         <p>
           Opened <a href="/hires">{hire.hireId}</a> · {hire.status}

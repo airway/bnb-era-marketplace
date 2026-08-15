@@ -1,7 +1,7 @@
 import { negotiateA2A, mandateTask } from "./a2a";
 import { MANDATES } from "./categories";
 import { COMMERCE, PAYMENT_TOKEN } from "./contracts";
-import { buildApproveTx, buildCreateJobTx } from "./erc8183";
+import { buildCreateJobTx } from "./erc8183";
 import { discoverA2A } from "./strategy";
 import type { CommerceQuote, HireRecord, MarketplaceAgent, PaymentRail, UnsignedTx } from "./types";
 import { probeX402 } from "./x402";
@@ -31,7 +31,7 @@ export async function quoteHireLocal(
   } else if (a2aUrl) {
     quote = await negotiateA2A(a2aUrl, task, agent.chainId);
     note = quote.accepted
-      ? "Live A2A negotiate succeeded (browser). Sign createJob next."
+      ? "Live A2A negotiate succeeded (browser). Start hire to createJob → registerJob → setBudget → approve → fund."
       : `A2A negotiate: ${quote.error ?? "not accepted"}. createJob calldata is still the official ERC-8183 path.`;
   } else {
     quote = {
@@ -63,7 +63,6 @@ export async function quoteHireLocal(
         quote,
       }),
     );
-    if (quote?.priceRaw) txs.push(buildApproveTx(agent.chainId, quote.priceRaw));
   }
 
   return {
