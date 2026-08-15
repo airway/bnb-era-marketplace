@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { a2aProxyBases, isAllowedA2AUrl, PAGES_A2A_PROXY } from "../src/lib/a2a-allowlist";
+import { isAllowedA2AUrl, PAGES_A2A_URL } from "../src/lib/a2a-allowlist";
 import { coverageDesk } from "../src/lib/fallback";
 
 describe("A2A quote proxy allowlist", () => {
@@ -15,9 +15,8 @@ describe("A2A quote proxy allowlist", () => {
     expect(isAllowedA2AUrl("not-a-url")).toBe(false);
   });
 
-  it("bakes the live Worker we control", () => {
-    expect(PAGES_A2A_PROXY).toBe("https://era-a2a-proxy.splendid-entree.workers.dev");
-    expect(a2aProxyBases()).toContain(PAGES_A2A_PROXY);
+  it("hardcodes the live iceline A2A proxy and no other host", () => {
+    expect(PAGES_A2A_URL).toBe("https://era-a2a-proxy.iceline.workers.dev/api/a2a");
   });
 });
 

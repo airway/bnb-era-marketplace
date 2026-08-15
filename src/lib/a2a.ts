@@ -1,42 +1,24 @@
-import { a2aProxyBases } from "./a2a-allowlist";
+import { PAGES_A2A_URL } from "./a2a-allowlist";
 import { COMMERCE, PAYMENT_TOKEN } from "./contracts";
 import type { CommerceQuote, MarketplaceAgent } from "./types";
 
 async function postA2A(a2aUrl: string, payload: unknown, signal: AbortSignal): Promise<Response> {
-  const direct = () =>
-    fetch(a2aUrl, {
+  if (typeof window === "undefined") {
+    return fetch(a2aUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(payload),
       signal,
       cache: "no-store" as RequestCache,
     });
-  if (typeof window === "undefined") return direct();
-  const staticPages = process.env.NEXT_PUBLIC_STATIC === "1";
-  const errors: string[] = [];
-  for (const base of a2aProxyBases()) {
-    if (staticPages && !base) continue;
-    const url = base ? `${base}/api/a2a` : "/api/a2a";
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ a2aUrl, payload }),
-        signal,
-        cache: "no-store",
-      });
-      if (res.ok) return res;
-      errors.push(`${url} HTTP ${res.status}`);
-    } catch (err) {
-      errors.push(`${url} ${err instanceof Error ? err.message : "fetch failed"}`);
-    }
   }
-  if (staticPages) {
-    throw new Error(
-      `Quote proxy failed (${errors.join("; ") || "no proxy URL"}). This static host cannot POST to the operator.`,
-    );
-  }
-  return direct();
+  return fetch(PAGES_A2A_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ a2aUrl, payload }),
+    signal,
+    cache: "no-store",
+  });
 }
 
 function rid(): string {

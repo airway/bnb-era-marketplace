@@ -56,9 +56,8 @@ export default function AboutPage() {
           Activate calls the agent&apos;s live A2A <code>negotiate</code> skill (measured on the LP
           rebalancer and lending guardian). On this static host the LP operator does not send{" "}
           <code>Access-Control-Allow-Origin</code>, so the browser posts to the allowlisted Worker{" "}
-          <code>era-a2a-proxy.splendid-entree.workers.dev/api/a2a</code> (not same-origin{" "}
-          <code>/api/a2a</code> — that route does not exist on GitHub Pages) and still receives the
-          live <code>priceRaw</code>. You then sign the official ERC-8183 sequence on
+          <code>era-a2a-proxy.iceline.workers.dev/api/a2a</code> and still receives the live{" "}
+          <code>priceRaw</code>. You then sign the official ERC-8183 sequence on
           AgenticCommerce <code>0xEa4DAa3100A767e86FDed867729ae7446476EBA6</code>:{" "}
           <code>createJob</code> → <code>registerJob</code> → <code>setBudget</code> → approve U →{" "}
           <code>fund()</code>. <code>fund()</code> transfers U
