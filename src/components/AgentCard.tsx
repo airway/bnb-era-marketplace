@@ -37,10 +37,13 @@ export function AgentCard({
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
           <span className="badge">{catLabel}</span>
           {agent.source !== "live" && <span className="badge badge-ref">{sourceLabel(agent.source)}</span>}
-          {agent.x402 && <span className="badge">x402</span>}
           {agent.healthStatus?.status && (
-            <span className="badge">{agent.healthStatus.status}</span>
+            <span className="badge" title={agent.healthStatus.message ?? undefined}>
+              {agent.healthStatus.status}
+              {agent.healthStatus.score != null ? ` ${agent.healthStatus.score}` : ""}
+            </span>
           )}
+          {agent.a2aUrl && <span className="badge">A2A</span>}
         </div>
       </div>
       <h3>{agent.name}</h3>

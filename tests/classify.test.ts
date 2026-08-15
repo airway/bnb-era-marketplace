@@ -34,7 +34,8 @@ describe("coverage snapshot is real token ids", () => {
   it("has live BSC identities on every desk", () => {
     for (const d of DESKS) {
       const rows = coverageDesk(d.id);
-      expect(rows.length).toBeGreaterThanOrEqual(4);
+      // Grid has three real BSC identities after Agent Studio #267697 is dropped.
+      expect(rows.length).toBeGreaterThanOrEqual(d.id === "grid" ? 3 : 4);
       for (const a of rows) {
         expect(a.tokenId).toMatch(/^\d+$/);
         expect(a.source).toBe("snapshot");

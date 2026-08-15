@@ -54,6 +54,7 @@ export function MarketplaceClient({
       x402: x402 ? "1" : "0",
       hideSpam: hideSpam ? "1" : "0",
       sort,
+      preferLive: "1",
     });
     fetch(`/api/agents?${qs}`)
       .then((r) => {

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { DESKS } from "@/lib/categories";
 import { listAllDesks } from "@/lib/query";
-import { AgentCard } from "@/components/AgentCard";
+import { HireableCard } from "@/components/HireableCard";
 
 const STEPS = [
   { n: "1", t: "Land on a desk", d: "Pick one job: rebalancing, grid, yield, or health factor." },
@@ -97,7 +97,7 @@ export default async function HomePage() {
               {result.warning && <div className="banner">{result.warning}</div>}
               <div className="grid">
                 {result.agents.slice(0, 4).map((agent) => (
-                  <AgentCard key={agent.id} agent={agent} />
+                  <HireableCard key={agent.id} agent={agent} />
                 ))}
               </div>
             </div>

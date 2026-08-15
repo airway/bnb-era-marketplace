@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { MANDATES } from "@/lib/categories";
 import { COMMERCE, explorerTx } from "@/lib/contracts";
+import { notifyFunded } from "@/lib/a2a";
 import { buildFundSequence, formatU, parseJobCreatedId } from "@/lib/erc8183";
 import { saveHireLocal } from "@/lib/client-store";
 import { quoteHireLocal } from "@/lib/hire-client";
@@ -238,9 +239,14 @@ export function HireDialog({
         ...next,
         fundTxHash,
         status: "funded",
-        note: `fund() confirmed ${fundTxHash} for job ${jobId}.`,
+        note: `fund() confirmed ${fundTxHash} for job ${jobId}. U is in AgenticCommerce escrow.`,
       };
       setStepLabel("Notifying the agent…");
+      if (next.quote?.a2aUrl) {
+        next.notifyResult = await notifyFunded(next.quote.a2aUrl, jobId);
+        next.status = "working";
+        next.note = `Funded job ${jobId}. notify_funded sent to the live A2A endpoint.`;
+      }
       next = await persist(
         "/api/hire/fund",
         {
@@ -317,8 +323,7 @@ export function HireDialog({
             <div className="field">
               <label htmlFor="rail">Rail</label>
               <select id="rail" className="search" value={rail} onChange={(e) => setRail(e.target.value as PaymentRail)}>
-                <option value="erc-8183">ERC-8183 (quote → createJob → fund)</option>
-                <option value="x402-probe">x402 probe (live HTTP 402 if the endpoint asks)</option>
+                <option value="erc-8183">ERC-8183 escrow (createJob → fund() moves U on-chain)</option>
               </select>
             </div>
             <div className="field">

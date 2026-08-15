@@ -118,6 +118,8 @@ describe("coverage desks stay real", () => {
     expect(FEATURED_BY_DESK["health-factor"][0]).toBe("266933");
     expect(FEATURED_BY_DESK.grid).not.toContain("267697");
     expect(FEATURED_BY_DESK.yield).not.toContain("267698");
+    expect(coverageDesk("grid").some((a) => a.tokenId === "267697")).toBe(false);
+    expect(coverageDesk("yield").some((a) => a.tokenId === "267698")).toBe(false);
   });
 });
 
@@ -147,8 +149,25 @@ describe("clone filter", () => {
     ).toBe(true);
     expect(
       isCloneNoise({
+        name: "GridMaster Ops",
+        description: "grid",
+        tokenId: "267697",
+        services: [],
+      }),
+    ).toBe(true);
+    expect(
+      isCloneNoise({
+        name: "Yield Compass (Agent Studio)",
+        description: "yield",
+        tokenId: "267698",
+        services: [],
+      }),
+    ).toBe(true);
+    expect(
+      isCloneNoise({
         name: "BNB LP Range Rebalancer",
         description: "Pancake V3 range",
+        tokenId: "265375",
         services: [],
       }),
     ).toBe(false);
