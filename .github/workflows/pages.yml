@@ -27,7 +27,9 @@ jobs:
       - name: Static export without Route Handlers
         run: |
           mv src/app/api /tmp/era-api
-          STATIC_EXPORT=1 NEXT_PUBLIC_STATIC=1 NEXT_PUBLIC_BASE_PATH=/bnb-era-marketplace npm run build
+          STATIC_EXPORT=1 NEXT_PUBLIC_STATIC=1 NEXT_PUBLIC_BASE_PATH=/bnb-era-marketplace \
+            NEXT_PUBLIC_API_BASE=https://era-a2a-proxy.sedate-socks.workers.dev \
+            npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
           path: out

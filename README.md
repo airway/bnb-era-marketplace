@@ -8,9 +8,11 @@ A marketplace for **ERC-8004 agents already live on BNB Smart Chain**. Not a por
 
 ## Public URL
 
-**https://bnb-era-marketplace.iceline.workers.dev**
+**https://airway.github.io/**
 
-Launch Pad: republish this Worker from `cursor/bnb-era-marketplace-c781` with `npm run deploy` (OpenNext + `wrangler deploy` using `wrangler.jsonc`). This environment cannot write the iceline account.
+Launch Pad: republish the Worker `https://bnb-era-marketplace.iceline.workers.dev` from `cursor/bnb-era-marketplace-c781` with `npm run deploy` (OpenNext + `wrangler deploy` using `wrangler.jsonc`). This environment cannot write the iceline account.
+
+GitHub Pages is static. Browser A2A for `#265375` goes through the allowlisted quote proxy `https://era-a2a-proxy.sedate-socks.workers.dev/api/a2a` (same route exists on the Worker after republish). The proxy only forwards the three live nip.io operators.
 
 Hire rails: `POST /api/hire` accepts `paymentRail=x402` (on-chain ERC-20 transfer from a live HTTP 402 or A2A price) and `erc-8183` (AgenticCommerce `fund()`). Mocks stay rejected. Status is not funded until the on-chain settle confirms.
 
@@ -24,8 +26,8 @@ Hire rails: `POST /api/hire` accepts `paymentRail=x402` (on-chain ERC-20 transfe
 
 1. `/` — four desks.
 2. `/desks/rebalancing` — **BNB LP Range Rebalancer** `#265375` (live Pancake V3 range, APR, last reset).
-3. `/desks/grid` — **positioncrew-bounded-grid** `#266234` (real grid identity). Agent Studio `#267697` is filtered — it is a `/launch` stub with no A2A. Registration A2A is a Termix `{agentId}` placeholder; the card says so.
-4. `/desks/yield` — **BNB Yield Optimizer** `#265876` (identity + A2A URL are live; operator host was HTTP 502 when probed — we do not invent APR). Agent Studio `#267698` is filtered.
+3. `/desks/grid` — three registered BSC identities: **positioncrew-bounded-grid** `#266234`, **DeFiBot** `#172801`, **TradePilot** `#177310`. Agent Studio `#267697` is filtered. `#266234` registration A2A is a Termix `{agentId}` placeholder; the card says so. We do not invent a fourth grid agent.
+4. `/desks/yield` — live yield identities from 8004scan. `#265876` is listed when the index returns it; the operator host was HTTP 502 when probed — we do not lead with it or invent APR. Agent Studio `#267698` is filtered.
 5. `/desks/health-factor` — **BNB Lending Guardian** `#266933` (live Venus HF / thresholds; HF unpublished stays unpublished).
 6. Identity → **Start hire** → wallet signs createJob → registerJob → setBudget → approve U → fund() on AgenticCommerce `0xEa4DAa3100A767e86FDed867729ae7446476EBA6` (U token `0xcE24439F2D9C6a2289F741120FE202248B666666`). `notify_funded` runs after fund() with the JobCreated id.
 

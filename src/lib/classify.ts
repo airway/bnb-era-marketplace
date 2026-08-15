@@ -7,7 +7,11 @@ export function fitForDesk(text: string, deskId: Exclude<CategoryId, "other">): 
   const matched: string[] = [];
   let score = 0;
   for (const k of desk.keywords) {
-    if (hay.includes(k.toLowerCase())) {
+    const hit =
+      k.startsWith("\\b") || k.startsWith("^")
+        ? new RegExp(k, "i").test(hay)
+        : hay.includes(k.toLowerCase());
+    if (hit) {
       score += 2;
       matched.push(k);
     }

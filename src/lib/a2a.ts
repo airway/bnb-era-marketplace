@@ -1,5 +1,33 @@
+import { a2aProxyBases } from "./a2a-allowlist";
 import { COMMERCE, PAYMENT_TOKEN } from "./contracts";
 import type { CommerceQuote, MarketplaceAgent } from "./types";
+
+async function postA2A(a2aUrl: string, payload: unknown, signal: AbortSignal): Promise<Response> {
+  const direct = () =>
+    fetch(a2aUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+      signal,
+      cache: "no-store" as RequestCache,
+    });
+  if (typeof window === "undefined") return direct();
+  for (const base of a2aProxyBases()) {
+    try {
+      const res = await fetch(base ? `${base}/api/a2a` : "/api/a2a", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ a2aUrl, payload }),
+        signal,
+        cache: "no-store",
+      });
+      if (res.ok) return res;
+    } catch {
+      /* try the next base, then direct */
+    }
+  }
+  return direct();
+}
 
 function rid(): string {
   const c = globalThis.crypto;
@@ -67,13 +95,7 @@ export async function negotiateA2A(
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 20000);
   try {
-    const res = await fetch(a2aUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(payload),
-      signal: ctrl.signal,
-      cache: "no-store" as RequestCache,
-    });
+    const res = await postA2A(a2aUrl, payload, ctrl.signal);
     const body = (await res.json()) as { result?: unknown; error?: { message?: string } };
     if (body.error) {
       return {
@@ -166,13 +188,7 @@ export async function notifyFunded(a2aUrl: string, jobId: string): Promise<strin
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 20000);
   try {
-    const res = await fetch(a2aUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(payload),
-      signal: ctrl.signal,
-      cache: "no-store" as RequestCache,
-    });
+    const res = await postA2A(a2aUrl, payload, ctrl.signal);
     const body = await res.json();
     return JSON.stringify(body).slice(0, 1500);
   } catch (err) {

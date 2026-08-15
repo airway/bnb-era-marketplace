@@ -20,6 +20,13 @@ describe("four official desks", () => {
     );
   });
 
+  it("puts TradePilot-style copy on the grid desk, not only 'grid trad'", () => {
+    const text = "Automated crypto trading bot with DCA, grid, and rebalancing strategies.";
+    const fits = classifyText(text);
+    expect(fits.find((f) => f.category === "grid")?.score ?? 0).toBeGreaterThanOrEqual(2);
+    expect(fits.find((f) => f.category === "rebalancing")?.score ?? 0).toBeGreaterThanOrEqual(2);
+  });
+
   it("has equal mandate coverage", () => {
     expect(DESKS.map((d) => d.id).sort()).toEqual(
       ["grid", "health-factor", "rebalancing", "yield"].sort(),

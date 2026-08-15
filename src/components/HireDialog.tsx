@@ -119,16 +119,23 @@ export function HireDialog({
       inputs,
     };
     let next: HireRecord | null = null;
-    try {
-      const res = await fetch("/api/hire", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const body = await res.json();
-      if (res.ok) next = body.hire;
-    } catch {
-      next = null;
+    const apiBase = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/$/, "");
+    const hireUrls = apiBase ? [`${apiBase}/api/hire`, "/api/hire"] : ["/api/hire"];
+    for (const url of hireUrls) {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const body = await res.json();
+        if (res.ok && body.hire) {
+          next = body.hire;
+          break;
+        }
+      } catch {
+        /* static host or proxy-only base — use in-browser quote */
+      }
     }
     if (!next) next = await quoteHireLocal(agent, { mandateId, paymentRail: rail, payer, inputs });
     saveHireLocal(next);

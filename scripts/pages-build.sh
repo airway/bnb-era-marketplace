@@ -13,7 +13,9 @@ if [[ -d src/app/api ]]; then
   trap restore EXIT
 fi
 
-STATIC_EXPORT=1 NEXT_PUBLIC_STATIC=1 NEXT_PUBLIC_BASE_PATH= npm run build
+STATIC_EXPORT=1 NEXT_PUBLIC_STATIC=1 NEXT_PUBLIC_BASE_PATH= \
+  NEXT_PUBLIC_API_BASE="${NEXT_PUBLIC_API_BASE:-https://era-a2a-proxy.sedate-socks.workers.dev}" \
+  npm run build
 
 if [[ -f public/_headers ]]; then
   cp public/_headers out/_headers

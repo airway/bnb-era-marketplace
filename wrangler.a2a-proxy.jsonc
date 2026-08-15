@@ -1,0 +1,6 @@
+{
+  "name": "era-a2a-proxy",
+  "main": "workers/a2a-proxy.js",
+  "compatibility_date": "2026-08-15",
+  "workers_dev": true
+}

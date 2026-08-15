@@ -26,7 +26,7 @@ export const OPERATOR_BY_TOKEN: Record<
 export const FEATURED_BY_DESK: Record<Exclude<CategoryId, "other">, string[]> = {
   rebalancing: ["265375"],
   grid: ["266234"],
-  yield: ["265876"],
+  yield: [],
   "health-factor": ["266933"],
 };
 

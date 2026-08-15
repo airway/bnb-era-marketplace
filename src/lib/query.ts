@@ -131,6 +131,7 @@ export async function listMarketplaceAgents(q: ListQuery): Promise<AgentListResu
     const rank = (a: MarketplaceAgent) => {
       const i = featuredOrder.indexOf(a.tokenId);
       if (i >= 0) return i;
+      if (a.strategy?.error?.includes("502")) return 120;
       if (a.a2aUrl) return 50;
       return 100;
     };
@@ -153,6 +154,7 @@ export async function listMarketplaceAgents(q: ListQuery): Promise<AgentListResu
     const rank = (a: MarketplaceAgent) => {
       const i = featuredOrder.indexOf(a.tokenId);
       if (i >= 0) return i;
+      if (a.strategy?.error?.includes("502")) return 120;
       if (a.a2aUrl) return 50;
       return 100;
     };

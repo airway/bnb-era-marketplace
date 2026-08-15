@@ -1,8 +1,12 @@
-import { NextResponse } from "next/server";
 import { fundHire } from "@/lib/hire";
+import { corsJson, corsOptions } from "@/lib/cors";
 import type { HireRecord } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+export async function OPTIONS() {
+  return corsOptions();
+}
 
 export async function POST(req: Request) {
   try {
@@ -20,11 +24,8 @@ export async function POST(req: Request) {
     const rail = body.hire?.paymentRail;
     if (rail !== "x402" && !body.jobId) throw new Error("jobId required");
     const hire = await fundHire(body);
-    return NextResponse.json({ hire });
+    return corsJson({ hire });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Fund confirm failed" },
-      { status: 400 },
-    );
+    return corsJson({ error: err instanceof Error ? err.message : "Fund confirm failed" }, { status: 400 });
   }
 }

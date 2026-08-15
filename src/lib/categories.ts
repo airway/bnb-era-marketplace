@@ -46,8 +46,8 @@ export const DESKS: CategoryDef[] = [
     youProvide: "Pair, low/high, number of levels, paper vs live.",
     youGet: "A grid plan (levels, inventory, fee estimate) from a registered agent.",
     risk: "Range break and inventory. 'Energy grid' names are filtered out.",
-    searchTerms: ["grid trading", "grid-trading", "gridmaster", "bounded-grid"],
-    keywords: ["grid trad", "grid-trad", "bounded-grid", "gridmaster", "grid bot"],
+    searchTerms: ["grid trading", "grid-trading", "gridmaster", "bounded-grid", "grid"],
+    keywords: ["grid trad", "grid-trad", "bounded-grid", "gridmaster", "grid bot", "\\bgrid\\b"],
     penalties: ["energy grid", "landing page", "hodlai", "silicon life"],
   },
   {

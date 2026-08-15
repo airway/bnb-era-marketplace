@@ -60,7 +60,8 @@ export default async function DeskPage({
         <p style={{ color: "var(--muted)" }}>
           Live search terms: {desk.searchTerms.map((t) => `“${t}”`).join(", ")} on 8004scan
           (chain 56), then an on-chain <code>tokenURI</code> / <code>ownerOf</code> read when you
-          open a card. Weak keyword hits are dropped.
+          open a card. Weak keyword hits are dropped. A thinner desk means fewer registered
+          identities — we do not invent cards to equalize counts.
         </p>
 
         <div className="pills" style={{ margin: "16px 0 24px" }}>

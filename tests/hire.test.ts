@@ -115,7 +115,7 @@ describe("coverage desks stay real", () => {
 
   it("does not lead desks with Agent Studio /launch stubs", () => {
     expect(FEATURED_BY_DESK.grid[0]).toBe("266234");
-    expect(FEATURED_BY_DESK.yield[0]).toBe("265876");
+    expect(FEATURED_BY_DESK.yield).not.toContain("265876");
     expect(FEATURED_BY_DESK.rebalancing[0]).toBe("265375");
     expect(FEATURED_BY_DESK["health-factor"][0]).toBe("266933");
     expect(FEATURED_BY_DESK.grid).not.toContain("267697");
