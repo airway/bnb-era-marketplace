@@ -1,0 +1,28 @@
+name: Cloudflare Pages
+
+on:
+  push:
+    branches: [main, cursor/bnb-era-marketplace-c781]
+  workflow_dispatch:
+
+# Direct upload. Set repo secrets CLOUDFLARE_API_TOKEN (Account → Cloudflare Pages: Edit)
+# and CLOUDFLARE_ACCOUNT_ID. No tokens are stored in this file.
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run pages:build
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy ./out --project-name=bnb-era-marketplace --branch=${{ github.ref_name }} --commit-hash=${{ github.sha }}

@@ -10,8 +10,10 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && wrangler deploy --temporary"
+    "preview": "npm run pages:build && wrangler pages dev ./out",
+    "pages:build": "bash scripts/pages-build.sh",
+    "pages:deploy": "npm run pages:build && wrangler pages deploy ./out --project-name=bnb-era-marketplace",
+    "deploy": "npm run pages:deploy"
   },
   "dependencies": {
     "next": "^15.4.6",

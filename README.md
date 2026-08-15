@@ -8,13 +8,24 @@ A marketplace for **ERC-8004 agents already live on BNB Smart Chain**. Not a por
 
 ## Public URL
 
-**https://airway.github.io/**
+Cloudflare Pages is the host. A preview was **not** published from this environment — the available Cloudflare credential cannot call Pages APIs.
 
-Durable GitHub Pages (user site). No captcha, no account wall. Static export of this branch; `_next` assets are published (not Jekyll-stripped). Hire is client-side: live A2A quote, then you sign ERC-8183 `createJob` → `registerJob` → `setBudget` → approve U → `fund()` (U moves into AgenticCommerce escrow). `notify_funded` is sent from the browser.
+```bash
+npm run pages:build
+npx wrangler pages deploy ./out --project-name=bnb-era-marketplace
+```
 
-`vercel.json` is a real Next.js config (framework + build). The durable judge URL is GitHub Pages above — an anonymous Vercel deploy expires in an hour, so it is not the public URL.
+That command is what this repo is wired for (`wrangler.jsonc` / `wrangler.toml` `pages_build_output_dir = "./out"`). After a successful deploy the URL is **https://bnb-era-marketplace.pages.dev**.
 
-The Cloudflare Worker `https://bnb-era-marketplace.iceline.workers.dev` may lag this branch until it is redeployed. Do not use `https://airway.github.io/bnb-era-marketplace/` — project Pages is not enabled.
+What is missing here:
+
+- Pod `CLOUDFLARE_API_TOKEN` is not a Cloudflare API token (it is a timestamp string, so Wrangler returns “Invalid format for Authorization header”).
+- A temporary Wrangler account token for **Sedate Socks** (`0f23c13e8adea402431c7ca0c28c1e48`) can run `wrangler whoami` but `wrangler pages project list` / `pages deploy` return **Authentication error [code: 10000]**. It does not have **Account → Cloudflare Pages → Edit**.
+- `wrangler login` (OAuth) is not available in this environment.
+
+To publish: create an API token with **Account → Cloudflare Pages → Edit** (and Account Settings: Read if you use GitHub Actions), set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, then run `npm run pages:deploy`. For GitHub-connected deploys, put those two values in repo secrets — they are not in this repo.
+
+Hire on the static Pages host is client-side: live A2A quote, then you sign ERC-8183 `createJob` → `registerJob` → `setBudget` → approve U → `fund()`. `notify_funded` is sent from the browser.
 
 ## Rubric coverage
 
