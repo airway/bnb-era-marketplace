@@ -12,7 +12,7 @@ A marketplace for **ERC-8004 agents already live on BNB Smart Chain**. Not a por
 
 Durable GitHub Pages (user site). No captcha, no account wall. Static export of this branch; `_next` assets are published (not Jekyll-stripped). Hire is client-side: live A2A quote, then you sign ERC-8183 `createJob` → `registerJob` → `setBudget` → approve U → `fund()` (U moves into AgenticCommerce escrow). `notify_funded` is sent from the browser.
 
-A Vercel preview of the same Next.js app (API routes included) is linked on the PR when the temporary deploy is live.
+`vercel.json` is a real Next.js config (framework + build). The durable judge URL is GitHub Pages above — an anonymous Vercel deploy expires in an hour, so it is not the public URL.
 
 The Cloudflare Worker `https://bnb-era-marketplace.iceline.workers.dev` may lag this branch until it is redeployed. Do not use `https://airway.github.io/bnb-era-marketplace/` — project Pages is not enabled.
 
